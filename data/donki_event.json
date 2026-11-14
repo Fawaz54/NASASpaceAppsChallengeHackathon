@@ -1,10 +1,15 @@
 {
   "source": "NASA DONKI (CCMC, Goddard Space Flight Center)",
-  "api": "https://ccmc.gsfc.nasa.gov/DONKI-API/get/SEP",
-  "id": "2026-09-05T16:30:00-SEP-001",
-  "event_time": "2026-09-05T16:30Z",
+  "id": "2026-09-05T16:18:00-SEP-001",
+  "event_time": "2026-09-05T16:18Z",
   "instruments": [
-    "MODEL: REleASE:ACE/EPAM 15.8-39.8 MeV"
+    "SOHO: COSTEP 15.8-39.8 MeV"
   ],
-  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/48554/-1"
+  "linked_events": [
+    "2026-09-05T15:04:00-FLR-001",
+    "2026-09-05T15:36:00-CME-001"
+  ],
+  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/48562/-1",
+  "api_query": "https://ccmc.gsfc.nasa.gov/DONKI-API/get/SEP?startDate=2026-09-05&endDate=2026-09-05",
+  "api_docs": "https://ccmc.gsfc.nasa.gov/DONKI/api/"
 }

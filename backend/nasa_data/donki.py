@@ -31,7 +31,11 @@ def latest_event(windows=6):
         start = end - timedelta(days=59)
         events = fetch_sep_events(start.isoformat(), end.isoformat())
         if events:
-            return max(events, key=lambda e: e.get("eventTime", ""))
+            # Prefer an event measured by a spacecraft over one flagged by a forecast model.
+            def measured(event):
+                names = [i.get("displayName", "") for i in event.get("instruments") or []]
+                return any(not name.startswith("MODEL") for name in names)
+            return max(events, key=lambda e: (measured(e), e.get("eventTime", "")))
         end = start - timedelta(days=1)
     return None
 
@@ -47,13 +51,19 @@ if __name__ == "__main__":
     event = latest_event()
     if not event:
         sys.exit("No solar particle events found in the last year.")
+    day = (event.get("eventTime") or "")[:10]
     record = {
         "source": "NASA DONKI (CCMC, Goddard Space Flight Center)",
-        "api": "https://ccmc.gsfc.nasa.gov/DONKI-API/get/SEP",
         "id": event.get("sepID"),
         "event_time": event.get("eventTime"),
         "instruments": [i.get("displayName") for i in event.get("instruments") or []],
+        "linked_events": [e.get("activityID") for e in event.get("linkedEvents") or []],
+        # Page for people to read about this event.
         "link": event.get("link"),
+        # The API call that returns this event. The dates are required:
+        # without them the API only searches recent days and returns [].
+        "api_query": URL.format(start=day, end=day),
+        "api_docs": "https://ccmc.gsfc.nasa.gov/DONKI/api/",
     }
     SAVED.write_text(json.dumps(record, indent=2) + "\n")
     print(f"Saved {record['id']} ({record['event_time']}) to {SAVED}")
