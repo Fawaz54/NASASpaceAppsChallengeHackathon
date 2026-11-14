@@ -1,2 +1,2 @@
 # NASASpaceAppsChallengeHackathon
-NASA Space Apps Challenge 2026 (Chicago) team project
+NASA Space Apps Challenge 2026 (Fawaz) team project
