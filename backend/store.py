@@ -13,13 +13,14 @@ PRIVATE = ROOT / "private"
 PROFILE_FILE = PRIVATE / "profile.json"
 WATCH_FILE = PRIVATE / "watch_baseline.json"
 
-# Where the crew is. One-way signal delay and background radiation are
-# illustrative values per location; see docs/sources.md.
+# Where the crew is: one-way signal delay and background radiation dose rate.
+# Sources are in docs/sources.md (Curiosity RAD for Mars and transit, the
+# Chang'e 4 lander for the Moon and station, NTRS 20220013418 for Mars delays).
 ENVIRONMENTS = {
-    "station": {"label": "Space station, low Earth orbit", "delay_seconds": 0, "dose_rate": 0.5},
-    "lunar": {"label": "Lunar base", "delay_seconds": 1.3, "dose_rate": 1.0},
+    "station": {"label": "Space station, low Earth orbit", "delay_seconds": 0, "dose_rate": 0.7},
+    "lunar": {"label": "Lunar base", "delay_seconds": 1.3, "dose_rate": 1.4},
     "transit": {"label": "Spacecraft in transit to Mars", "delay_seconds": 600, "dose_rate": 1.8},
-    "mars": {"label": "Mars base", "delay_seconds": 1140, "dose_rate": 0.7},
+    "mars": {"label": "Mars base", "delay_seconds": 1140, "dose_rate": 0.67},
 }
 
 PROFILE_FIELDS = {

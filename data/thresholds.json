@@ -1,47 +1,47 @@
 {
-  "_note": "DRAFT LIMITS. Entries with a null source are placeholders the team chose so the app runs. 'General clinical reference' entries are widely used clinic values, not spaceflight limits. Replace each with a NASA-sourced value and record it in docs/sources.md.",
+  "_note": "Limits for each reading. 'source' says where each number comes from; full references and links are in docs/sources.md. Numbers marked as chosen by the team are placeholders, not medical limits.",
 
   "dose_rate": {
     "area": "radiation",
     "high": {"watch": 3.0, "act": 5.0, "protocol": "RAD-01"},
-    "source": null
+    "source": "Values chosen by the team. The two-level design (caution, then shelter) follows NASA's Artemis II radiation thresholds, whose values are not published. Context: NASA-STD-3001 Vol 1 [V1 4030] limits a career to less than 600 mSv and one solar particle event to less than 250 mSv."
   },
   "heart_rate": {
     "area": "heart", "drift": true,
     "high": {"watch_pct": 12, "act_pct": 20, "protocol": "HRT-01"},
-    "source": null
+    "source": "Percentages above the personal baseline chosen by the team. Rationale: NASA Human Research Roadmap, Risk of Cardiovascular Adaptations."
   },
   "systolic_bp": {
     "area": "heart", "drift": true,
     "high": {"watch": 130, "act": 140, "protocol": "HRT-01"},
     "low": {"watch": 95, "act": 90, "protocol": "HRT-02"},
-    "source": "General clinical reference"
+    "source": "High: American Heart Association categories (130 is stage 1, 140 is stage 2 hypertension). Low: chosen by the team, not yet sourced."
   },
   "body_temp": {
     "area": "general",
-    "high": {"watch": 37.6, "act": 38.0, "protocol": "GEN-01"},
+    "high": {"watch": 37.8, "act": 38.0, "protocol": "GEN-01"},
     "low": {"watch": 36.0, "act": 35.0, "protocol": "GEN-04"},
-    "source": "General clinical reference"
+    "source": "High: CDC defines fever as 38.0 C (100.4 F) or higher and notes some authorities use 37.8 C. Low: chosen by the team, not yet sourced."
   },
   "blood_sugar": {
     "area": "general",
     "high": {"watch": 140, "act": 180, "protocol": "GEN-03"},
     "low": {"watch": 80, "act": 70, "protocol": "GEN-02"},
-    "source": "General clinical reference"
+    "source": "Low: American Diabetes Association level 1 hypoglycemia is below 70 mg/dL; the 80 watch level is chosen by the team. High: chosen by the team, not yet sourced."
   },
   "sleep_hours": {
     "area": "mind", "drift": true,
     "low": {"watch": 6.5, "act": 5.5, "protocol": "MND-01"},
-    "source": null
+    "source": "Levels chosen by the team. Context: NASA schedules 8.5 hours and station crews averaged 6.09 hours (Barger et al., Lancet Neurology, 2014)."
   },
   "mood": {
     "area": "mind", "drift": true,
     "low": {"watch": 3, "act": 2, "protocol": "MND-01"},
-    "source": null
+    "source": "Scale and levels chosen by the team. Rationale: NASA Evidence Report, Risk of Adverse Cognitive or Behavioral Changes (2025)."
   },
   "exercise_pct": {
     "area": "bone", "drift": true,
     "low": {"watch": 80, "act": 60, "protocol": "BON-01"},
-    "source": null
+    "source": "Levels chosen by the team. Context: station crews exercise an average of two hours a day (NASA) to counter bone loss of about 1 to 1.5% per month (NASA Fundamentals of Human Health)."
   }
 }
