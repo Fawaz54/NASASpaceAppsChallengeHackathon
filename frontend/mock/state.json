@@ -1,0 +1,30 @@
+{
+  "crew": {"id": "crew-1", "name": "A. Kim", "mission_day": 142},
+  "scenario": "radiation",
+  "readings": [
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "dose_rate", "value": 4.2, "unit": "mSv/day"},
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "heart_rate", "value": 62, "unit": "bpm"},
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "systolic_bp", "value": 118, "unit": "mmHg"},
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "exercise_pct", "value": 92, "unit": "%"},
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "sleep_hours", "value": 7.2, "unit": "h"},
+    {"time": "2026-11-14T18:00:00+00:00", "metric": "mood", "value": 4, "unit": "1-5"}
+  ],
+  "areas": [
+    {"id": "radiation", "label": "Radiation", "status": "act", "value": 4.2, "unit": "mSv/day"},
+    {"id": "heart", "label": "Heart", "status": "ok", "value": 62, "unit": "bpm"},
+    {"id": "bone", "label": "Bone and muscle", "status": "ok", "value": 92, "unit": "%"},
+    {"id": "mind", "label": "Mind and sleep", "status": "ok", "value": 7.2, "unit": "h"}
+  ],
+  "alert": {
+    "area": "radiation",
+    "protocol_id": "RAD-01",
+    "title": "Solar particle event in progress",
+    "steps": [
+      "Stop current task and secure equipment",
+      "Move to the shielded crew quarters",
+      "Stay until the dose rate is back in the normal band",
+      "Report any nausea or fatigue"
+    ]
+  },
+  "earth_link": {"delay_minutes": 19, "summary_sent": true, "reply_eta_minutes": 38}
+}

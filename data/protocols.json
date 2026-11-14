@@ -1,0 +1,49 @@
+{
+  "radiation": {
+    "id": "RAD-01",
+    "title": "Solar particle event in progress",
+    "steps": [
+      "Stop current task and secure equipment",
+      "Move to the shielded crew quarters",
+      "Stay until the dose rate is back in the normal band",
+      "Report any nausea or fatigue"
+    ],
+    "placeholder": true,
+    "source": null
+  },
+  "heart": {
+    "id": "HRT-01",
+    "title": "Heart readings above your baseline",
+    "steps": [
+      "Stop exercise and rest for 10 minutes",
+      "Measure blood pressure again",
+      "Drink 250 ml of water",
+      "Report chest pain or dizziness immediately"
+    ],
+    "placeholder": true,
+    "source": null
+  },
+  "bone": {
+    "id": "BON-01",
+    "title": "Exercise is well below your plan",
+    "steps": [
+      "Review this week's missed sessions",
+      "Schedule a resistance session today",
+      "Report any pain that is stopping you from exercising"
+    ],
+    "placeholder": true,
+    "source": null
+  },
+  "mind": {
+    "id": "MND-01",
+    "title": "Sleep and mood have dropped",
+    "steps": [
+      "Complete a full check-in",
+      "Move one task off today's schedule",
+      "Start wind-down 30 minutes earlier tonight",
+      "Request a private call with the flight surgeon"
+    ],
+    "placeholder": true,
+    "source": null
+  }
+}

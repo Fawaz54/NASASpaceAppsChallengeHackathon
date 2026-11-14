@@ -1,0 +1,8 @@
+{
+  "dose_rate":    {"area": "radiation", "direction": "above", "watch": 1.5, "act": 3.0, "placeholder": true, "source": null},
+  "heart_rate":   {"area": "heart",     "direction": "above", "watch": 70,  "act": 75,  "placeholder": true, "source": null},
+  "systolic_bp":  {"area": "heart",     "direction": "above", "watch": 128, "act": 135, "placeholder": true, "source": null},
+  "exercise_pct": {"area": "bone",      "direction": "below", "watch": 80,  "act": 60,  "placeholder": true, "source": null},
+  "sleep_hours":  {"area": "mind",      "direction": "below", "watch": 6.5, "act": 5.5, "placeholder": true, "source": null},
+  "mood":         {"area": "mind",      "direction": "below", "watch": 3,   "act": 2,   "placeholder": true, "source": null}
+}
