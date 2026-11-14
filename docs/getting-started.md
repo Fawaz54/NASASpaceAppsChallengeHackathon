@@ -14,14 +14,15 @@ All crew data is simulated. That is expected: real astronaut records are private
 ## How the pieces connect
 
 ```
-simulator  ->  rules engine  ->  /api/state  ->  web page
-(Abel)         (Fawaz)           (Fawaz)         (Mika, Srijana, Mehek)
-fake readings  ok/watch/act      one JSON        tiles, checklist,
-               + checklist       message         check-in, body map
+simulator  ->  rules  ->  /api/state  ->  crew screens
+fake readings  ok/watch/act   one JSON     body figure, checklist,
+               + checklist    message      check-in, emergency
+
+crew screens  <->  Earth link (with delay)  <->  doctor screen
 ```
 
-The thresholds and checklists the rules engine uses live in `data/` as plain
-files, which Mehek fills in from NASA sources.
+The limits, checklists and explanations the rules use live in `data/` as
+plain JSON files, so they can be edited without programming.
 
 ## One-time setup
 
@@ -45,9 +46,10 @@ files, which Mehek fills in from NASA sources.
 
    On Windows the command may be `python backend/main.py`.
 
-5. Open http://localhost:8000 in your browser. You should see four tiles.
-   Click "Radiation event" at the bottom: the Radiation tile turns red and a
-   checklist appears.
+5. Open http://localhost:8000 in your browser. The first time, it asks you
+   to set up a profile. After that you see the home screen: a body figure
+   and five health areas. Click "Solar particle event" at the bottom: within
+   a few seconds the Radiation area turns red and a checklist appears.
 
 `localhost` means "this computer". Each person runs their own copy; nobody
 else can see yours. Always open the app through that address, not by
@@ -102,12 +104,10 @@ giant merge at the end usually does.
 
 ## Team rules
 
-- Stay in your own files (listed in your guide). If you need a change in
-  someone else's file, ask them.
 - `main` must always run. Test before you merge.
-- `docs/contract.md` is the agreed format of the data passed between backend
-  and frontend. Do not change it without telling everyone.
-- Never commit anything from `private/` (smartwatch data).
+- `docs/contract.md` describes the data passed between backend and frontend.
+  If you change one side, change the other in the same pull request.
+- Never commit anything from `private/` (profile and smartwatch data).
 
 ## Words you will see
 
@@ -124,10 +124,8 @@ giant merge at the end usually does.
 | Protocol | A named checklist of steps, such as RAD-01 |
 | Scenario | A scripted problem we switch on for the demo |
 
-## Your guide
+## Where to go next
 
-- Abel: [abel.md](abel.md)
-- Fawaz: [fawaz.md](fawaz.md)
-- Mika: [mika.md](mika.md)
-- Srijana: [srijana.md](srijana.md)
-- Mehek: [mehek.md](mehek.md)
+- [contract.md](contract.md): every endpoint and data shape
+- [demo.md](demo.md): the demo script
+- [sources.md](sources.md): what still needs a NASA source

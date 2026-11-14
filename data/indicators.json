@@ -1,0 +1,52 @@
+{
+  "_note": "DRAFT TEXT written by the team. Check each statement against a NASA Human Research Program source and record it in docs/sources.md.",
+
+  "dose_rate": {
+    "label": "Radiation dose rate", "area": "radiation",
+    "what": "How much radiation your body is absorbing per day.",
+    "space": "Outside Earth's magnetic field, crews are exposed to cosmic rays all the time and to sudden bursts of particles during solar storms.",
+    "how": "Read automatically from the cabin dosimeter."
+  },
+  "heart_rate": {
+    "label": "Resting heart rate", "area": "heart",
+    "what": "How many times your heart beats per minute while you are at rest.",
+    "space": "In low gravity, body fluid shifts toward the head and the heart and blood vessels gradually lose conditioning, so a rising resting rate is worth watching.",
+    "how": "Read from your wrist sensor while you are still."
+  },
+  "systolic_bp": {
+    "label": "Blood pressure", "area": "heart",
+    "what": "The pressure in your arteries each time your heart beats (the upper number).",
+    "space": "Fluid shifts and changes to the blood vessels in spaceflight can move blood pressure up or down.",
+    "how": "Use the arm cuff after sitting still for five minutes, then enter the upper number."
+  },
+  "body_temp": {
+    "label": "Body temperature", "area": "general",
+    "what": "Your core temperature. A fever usually means your body is fighting an infection.",
+    "space": "Spaceflight changes how the immune system works, and in a closed cabin an infection can spread to the whole crew.",
+    "how": "Use the thermometer from the medical kit and enter the reading."
+  },
+  "blood_sugar": {
+    "label": "Blood sugar", "area": "general",
+    "what": "The amount of glucose in your blood, your body's main fuel.",
+    "space": "Diet, stress and reduced activity on a mission can all affect how well the body controls blood sugar.",
+    "how": "Use the finger-prick meter from the medical kit and enter the reading in mg/dL."
+  },
+  "sleep_hours": {
+    "label": "Sleep", "area": "mind",
+    "what": "How many hours you slept last night.",
+    "space": "Noise, workload and the lack of a normal day and night make sleep shorter on missions, which affects mood, attention and safety.",
+    "how": "Read from your wrist sensor, or enter it in the daily check-in."
+  },
+  "mood": {
+    "label": "Mood", "area": "mind",
+    "what": "Your own rating of how you feel today, from 1 (very low) to 5 (very good).",
+    "space": "Isolation, confinement and distance from home build up over a long mission. A slow slide over days matters more than one bad day.",
+    "how": "Rate it in the daily check-in."
+  },
+  "exercise_pct": {
+    "label": "Exercise completed", "area": "bone",
+    "what": "How much of your prescribed exercise plan you have completed this week.",
+    "space": "Without the load of gravity, bones lose mineral and muscles shrink. Regular resistance and cardio exercise is the main protection.",
+    "how": "Logged automatically by the exercise equipment."
+  }
+}

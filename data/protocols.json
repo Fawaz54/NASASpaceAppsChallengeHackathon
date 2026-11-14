@@ -1,49 +1,113 @@
 {
-  "radiation": {
-    "id": "RAD-01",
+  "_note": "DRAFT CHECKLISTS written by the team as placeholders. They are not medical advice. Replace each with steps from a published NASA or space-medicine source and record it in docs/sources.md.",
+
+  "RAD-01": {
     "title": "Solar particle event in progress",
-    "steps": [
-      "Stop current task and secure equipment",
-      "Move to the shielded crew quarters",
-      "Stay until the dose rate is back in the normal band",
-      "Report any nausea or fatigue"
-    ],
-    "placeholder": true,
+    "why": "The radiation dose rate has risen far above the usual background, which happens when a solar storm reaches the crew.",
+    "steps": ["Stop your current task and secure equipment", "Move to the shielded crew quarters", "Stay there until the dose rate is back in the normal band", "Report any nausea or unusual tiredness"],
     "source": null
   },
-  "heart": {
-    "id": "HRT-01",
-    "title": "Heart readings above your baseline",
-    "steps": [
-      "Stop exercise and rest for 10 minutes",
-      "Measure blood pressure again",
-      "Drink 250 ml of water",
-      "Report chest pain or dizziness immediately"
-    ],
-    "placeholder": true,
+  "HRT-01": {
+    "title": "Heart readings well above your baseline",
+    "why": "Your heart rate or blood pressure is much higher than what is normal for you.",
+    "steps": ["Stop exercise or hard work and rest", "Measure your blood pressure again after 10 minutes", "Drink 250 ml of water", "Press 'I need help' if you have chest pain, dizziness or trouble breathing"],
     "source": null
   },
-  "bone": {
-    "id": "BON-01",
-    "title": "Exercise is well below your plan",
-    "steps": [
-      "Review this week's missed sessions",
-      "Schedule a resistance session today",
-      "Report any pain that is stopping you from exercising"
-    ],
-    "placeholder": true,
+  "HRT-02": {
+    "title": "Blood pressure is low",
+    "why": "Your blood pressure is below the level where dizziness or fainting become likely.",
+    "steps": ["Stop what you are doing and secure yourself", "Drink 250 ml of water with electrolytes", "Measure your blood pressure again after 10 minutes", "Press 'I need help' if you feel faint or confused"],
     "source": null
   },
-  "mind": {
-    "id": "MND-01",
+  "GEN-01": {
+    "title": "You have a fever",
+    "why": "Your body temperature is at fever level, which usually means your body is fighting an infection.",
+    "steps": ["Rest and stop exercise for today", "Drink water regularly", "Measure your temperature again in one hour", "Keep your distance from crewmates where you can", "Wait for the flight surgeon before taking any medication"],
+    "source": null
+  },
+  "GEN-02": {
+    "title": "Blood sugar is low",
+    "why": "Your blood sugar is below the level where shakiness, sweating and confusion can start.",
+    "steps": ["Eat or drink something sugary now", "Rest for 15 minutes", "Measure your blood sugar again", "Eat a proper meal once it is back in range"],
+    "source": null
+  },
+  "GEN-03": {
+    "title": "Blood sugar is high",
+    "why": "Your blood sugar is well above the normal range.",
+    "steps": ["Drink water", "Note when and what you last ate", "Measure your blood sugar again in one hour", "Send the readings to the flight surgeon"],
+    "source": null
+  },
+  "GEN-04": {
+    "title": "Body temperature is low",
+    "why": "Your body temperature is below the normal range.",
+    "steps": ["Put on extra layers", "Move to a warmer part of the cabin", "Have a warm drink", "Measure your temperature again in 30 minutes"],
+    "source": null
+  },
+  "MND-01": {
     "title": "Sleep and mood have dropped",
-    "steps": [
-      "Complete a full check-in",
-      "Move one task off today's schedule",
-      "Start wind-down 30 minutes earlier tonight",
-      "Request a private call with the flight surgeon"
-    ],
-    "placeholder": true,
+    "why": "You have been sleeping much less than usual or rating your mood low, and both affect safety and performance.",
+    "steps": ["Tell a crewmate how you are doing", "Move one task off today's schedule", "Start winding down 30 minutes earlier tonight", "Ask for a private call with the flight surgeon"],
+    "source": null
+  },
+  "BON-01": {
+    "title": "Exercise is well below your plan",
+    "why": "Without regular loading, bones and muscles weaken quickly in low gravity.",
+    "steps": ["Check which sessions were missed this week", "Schedule a resistance session today", "Report any pain or equipment problem that is stopping you"],
+    "source": null
+  },
+
+  "EMG-BREATH": {
+    "title": "Trouble breathing",
+    "why": "Difficulty breathing is treated as the most urgent sign.",
+    "steps": ["Call a crewmate to stay with you now", "Stop all activity and stay upright", "Loosen anything tight around your neck and chest", "Check the cabin air alarms and move to another module if any are active", "Have the crewmate get the medical kit and oxygen"],
+    "source": null
+  },
+  "EMG-CHEST": {
+    "title": "Chest pain or pressure",
+    "why": "Chest pain can come from the heart and must not be waited out.",
+    "steps": ["Call a crewmate to stay with you now", "Stop all activity and rest", "Have the crewmate measure your heart rate and blood pressure", "Have the crewmate get the medical kit", "Do not exercise until the flight surgeon replies"],
+    "source": null
+  },
+  "EMG-BLEED": {
+    "title": "Bleeding that will not stop",
+    "why": "Continued bleeding needs direct pressure straight away.",
+    "steps": ["Press firmly on the wound with a clean dressing", "Call a crewmate to help", "Keep pressing without lifting to look for 10 minutes", "Add another dressing on top if blood soaks through", "Have the crewmate get the medical kit"],
+    "source": null
+  },
+  "EMG-NEURO": {
+    "title": "Fainting or confusion",
+    "why": "Fainting or confusion can mean the brain is not getting what it needs.",
+    "steps": ["Call a crewmate to stay with you now", "Secure yourself so you cannot drift or fall", "Have the crewmate check your blood sugar, heart rate and blood pressure", "Do not operate equipment", "Tell the crewmate if your speech, vision or strength changes"],
+    "source": null
+  },
+  "EMG-HEAD": {
+    "title": "Head pain",
+    "why": "Headaches are common in spaceflight but a severe or sudden one needs checking.",
+    "steps": ["Stop your task and rest in a dimmer area", "Drink 250 ml of water", "Check the cabin air readings", "Tell a crewmate if your vision changes or the pain is the worst you have had", "Rate the pain again in 30 minutes"],
+    "source": null
+  },
+  "EMG-BACK": {
+    "title": "Back or neck pain",
+    "why": "The spine lengthens in low gravity, which often causes back pain, but injuries need to be ruled out.",
+    "steps": ["Stop lifting, pulling or exercise", "Find the position that hurts least and rest in it", "Tell a crewmate if you have numbness or weakness in an arm or leg", "Rate the pain again in 30 minutes"],
+    "source": null
+  },
+  "EMG-ABDO": {
+    "title": "Abdominal pain",
+    "why": "Abdominal pain has many causes and some are serious.",
+    "steps": ["Stop eating and exercise for now", "Rest in the position that hurts least", "Measure your temperature", "Tell a crewmate if the pain is getting worse or you are vomiting", "Rate the pain again in 30 minutes"],
+    "source": null
+  },
+  "EMG-LIMB": {
+    "title": "Arm or leg injury",
+    "why": "A hurt limb should be rested and checked before it is used again.",
+    "steps": ["Stop using the limb", "Check that you can move and feel your fingers or toes", "Apply a cold pack for 15 minutes", "Have a crewmate support it with a splint or wrap if it hurts to move", "Rate the pain again in 30 minutes"],
+    "source": null
+  },
+  "EMG-GEN": {
+    "title": "Feeling unwell",
+    "why": "No specific danger sign was reported, so the first step is to get checked.",
+    "steps": ["Stop your current task", "Tell a crewmate how you feel", "Measure your temperature, heart rate and blood pressure", "Drink water and rest", "Press 'I need help' again if anything gets worse"],
     "source": null
   }
 }

@@ -1,8 +1,47 @@
 {
-  "dose_rate":    {"area": "radiation", "direction": "above", "watch": 1.5, "act": 3.0, "placeholder": true, "source": null},
-  "heart_rate":   {"area": "heart",     "direction": "above", "watch": 70,  "act": 75,  "placeholder": true, "source": null},
-  "systolic_bp":  {"area": "heart",     "direction": "above", "watch": 128, "act": 135, "placeholder": true, "source": null},
-  "exercise_pct": {"area": "bone",      "direction": "below", "watch": 80,  "act": 60,  "placeholder": true, "source": null},
-  "sleep_hours":  {"area": "mind",      "direction": "below", "watch": 6.5, "act": 5.5, "placeholder": true, "source": null},
-  "mood":         {"area": "mind",      "direction": "below", "watch": 3,   "act": 2,   "placeholder": true, "source": null}
+  "_note": "DRAFT LIMITS. Entries with a null source are placeholders the team chose so the app runs. 'General clinical reference' entries are widely used clinic values, not spaceflight limits. Replace each with a NASA-sourced value and record it in docs/sources.md.",
+
+  "dose_rate": {
+    "area": "radiation",
+    "high": {"watch": 3.0, "act": 5.0, "protocol": "RAD-01"},
+    "source": null
+  },
+  "heart_rate": {
+    "area": "heart", "drift": true,
+    "high": {"watch_pct": 12, "act_pct": 20, "protocol": "HRT-01"},
+    "source": null
+  },
+  "systolic_bp": {
+    "area": "heart", "drift": true,
+    "high": {"watch": 130, "act": 140, "protocol": "HRT-01"},
+    "low": {"watch": 95, "act": 90, "protocol": "HRT-02"},
+    "source": "General clinical reference"
+  },
+  "body_temp": {
+    "area": "general",
+    "high": {"watch": 37.6, "act": 38.0, "protocol": "GEN-01"},
+    "low": {"watch": 36.0, "act": 35.0, "protocol": "GEN-04"},
+    "source": "General clinical reference"
+  },
+  "blood_sugar": {
+    "area": "general",
+    "high": {"watch": 140, "act": 180, "protocol": "GEN-03"},
+    "low": {"watch": 80, "act": 70, "protocol": "GEN-02"},
+    "source": "General clinical reference"
+  },
+  "sleep_hours": {
+    "area": "mind", "drift": true,
+    "low": {"watch": 6.5, "act": 5.5, "protocol": "MND-01"},
+    "source": null
+  },
+  "mood": {
+    "area": "mind", "drift": true,
+    "low": {"watch": 3, "act": 2, "protocol": "MND-01"},
+    "source": null
+  },
+  "exercise_pct": {
+    "area": "bone", "drift": true,
+    "low": {"watch": 80, "act": 60, "protocol": "BON-01"},
+    "source": null
+  }
 }

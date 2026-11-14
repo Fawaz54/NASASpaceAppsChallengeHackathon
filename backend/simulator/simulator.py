@@ -1,29 +1,44 @@
-"""Owner: Backend A. Generates fake crew readings in the docs/contract.md format.
+"""Generates the crew member's readings.
 
-All numbers here are illustrative, not medical reference values.
+Real sensors would replace this file. Values are simulated around the
+personal baseline from the profile (and the Apple Watch import, if present).
+Scenario numbers are illustrative, not medical reference values.
 """
 import random
+import time
 from datetime import datetime, timezone
 
-# metric: (normal value, unit, random wobble)
-BASELINE = {
-    "dose_rate": (0.7, "mSv/day", 0.05),
-    "heart_rate": (62, "bpm", 2),
-    "systolic_bp": (118, "mmHg", 3),
-    "exercise_pct": (92, "%", 0),
-    "sleep_hours": (7.2, "h", 0),
-    "mood": (4, "1-5", 0),
+import store
+
+# metric: (fallback baseline, unit, random wobble, decimals)
+METRICS = {
+    "dose_rate": (0.7, "mSv/day", 0.04, 2),
+    "heart_rate": (62, "bpm", 1.5, 0),
+    "systolic_bp": (118, "mmHg", 2, 0),
+    "body_temp": (36.8, "°C", 0.1, 1),
+    "blood_sugar": (92, "mg/dL", 3, 0),
+    "exercise_pct": (92, "%", 0, 0),
+    "sleep_hours": (7.2, "h", 0, 1),
+    "mood": (4, "of 5", 0, 0),
 }
 
-# scenario name: metrics it overrides
+# Each scenario: how fast it develops, and the target per metric as
+# ("abs", value) or ("mul", multiple of the personal baseline).
 SCENARIOS = {
-    "none": {},
-    "radiation": {"dose_rate": 4.2},
-    "heart": {"heart_rate": 78, "systolic_bp": 138},
-    "behavioral": {"sleep_hours": 5.4, "mood": 2},
+    "none": {"label": "Normal day", "speed": "fast", "targets": {}},
+    "radiation": {"label": "Solar particle event", "speed": "fast", "targets": {"dose_rate": ("abs", 8.0)}},
+    "fever": {"label": "Fever", "speed": "fast", "targets": {"body_temp": ("abs", 38.6), "heart_rate": ("mul", 1.14)}},
+    "heart": {"label": "Heart drift", "speed": "slow",
+              "targets": {"heart_rate": ("mul", 1.16), "systolic_bp": ("mul", 1.11)}},
+    "behavioral": {"label": "Sleep and mood decline", "speed": "slow",
+                   "targets": {"sleep_hours": ("abs", 5.2), "mood": ("abs", 2)}},
+    "exercise": {"label": "Missed exercise", "speed": "slow", "targets": {"exercise_pct": ("abs", 55)}},
 }
+RAMP_SECONDS = 40   # how long a fast scenario takes to reach its peak
+DRIFT_DAYS = 7      # how many days a slow scenario has been building
 
 _scenario = "none"
+_started = 0.0
 
 
 def get_scenario():
@@ -31,25 +46,84 @@ def get_scenario():
 
 
 def set_scenario(name):
-    global _scenario
+    global _scenario, _started
     if name not in SCENARIOS:
         return False
-    _scenario = name
+    _scenario, _started = name, time.time()
+    store.manual.clear()
+    store.manual_dates.clear()
     return True
 
 
+def baseline(metric):
+    """What is normal for this crew member."""
+    profile = store.profile or {}
+    watch = store.watch_baseline() or {}
+    if metric == "dose_rate":
+        return store.environment()["dose_rate"]
+    if metric == "heart_rate":
+        return profile.get("resting_hr") or watch.get("resting_hr") or METRICS[metric][0]
+    if metric == "sleep_hours":
+        return profile.get("sleep_hours") or watch.get("sleep_hours") or METRICS[metric][0]
+    if metric == "systolic_bp":
+        return profile.get("systolic_bp") or METRICS[metric][0]
+    return METRICS[metric][0]
+
+
+def _target(metric):
+    spec = SCENARIOS[_scenario]["targets"].get(metric)
+    if spec is None:
+        return None
+    kind, amount = spec
+    return amount if kind == "abs" else baseline(metric) * amount
+
+
+def _steady_value(metric):
+    """Today's value without the random wobble."""
+    if metric in store.manual:
+        return store.manual[metric]
+    base, target = baseline(metric), _target(metric)
+    if target is None:
+        return base
+    if SCENARIOS[_scenario]["speed"] == "slow":
+        return target
+    progress = min(1.0, (time.time() - _started) / RAMP_SECONDS)
+    return base + (target - base) * progress
+
+
 def current_readings():
-    """One reading per metric, right now."""
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    overrides = SCENARIOS[_scenario]
     readings = []
-    for metric, (normal, unit, wobble) in BASELINE.items():
-        value = overrides.get(metric, normal) + random.uniform(-wobble, wobble)
-        readings.append({"time": now, "metric": metric, "value": round(value, 1), "unit": unit})
+    for metric, (_, unit, wobble, decimals) in METRICS.items():
+        value = _steady_value(metric)
+        if metric not in store.manual:
+            value += random.uniform(-wobble, wobble)
+        readings.append({
+            "time": now, "metric": metric, "unit": unit,
+            "value": round(value, decimals) if decimals else int(round(value)),
+            "source": "entered" if metric in store.manual else "sensor",
+        })
     return readings
 
 
-# TODO (Backend A):
-# - ramp scenario values over time instead of jumping
-# - keep a 30-day history per metric for the trend screen
-# - replay a real DONKI event for the radiation scenario (see nasa_data/donki.py)
+def history(metric, days=30):
+    """One value per day, oldest first, ending with today."""
+    _, _, wobble, decimals = METRICS[metric]
+    base, target = baseline(metric), _target(metric)
+    rng = random.Random(f"history-{metric}")
+    spread = max(wobble, abs(base) * 0.015)
+    values = [base + rng.uniform(-spread, spread) for _ in range(days)]
+
+    # Real daily values from the Apple Watch import, where we have them.
+    daily = (store.watch_baseline() or {}).get("daily", {}).get(metric)
+    if daily:
+        tail = daily[-days:]
+        shift = base - sum(tail) / len(tail)  # centre the real pattern on this person's baseline
+        values[-len(tail):] = [v + shift for v in tail]
+
+    if target is not None and SCENARIOS[_scenario]["speed"] == "slow":
+        for step in range(DRIFT_DAYS):
+            index = days - DRIFT_DAYS + step
+            values[index] = base + (target - base) * (step + 1) / DRIFT_DAYS + rng.uniform(-spread, spread) / 2
+    values[-1] = _steady_value(metric)
+    return [round(v, max(decimals, 1)) for v in values]

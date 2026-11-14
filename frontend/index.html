@@ -1,52 +1,13 @@
 <!doctype html>
-<!-- Owner: Frontend 1. Home screen. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Crew health</title>
+  <title>Crew Health</title>
   <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
-<main>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="checkin.html">Daily check-in</a>
-    <a href="trend.html">Trends</a>
-    <a href="ask.html">Ask why</a>
-  </nav>
-
-  <div class="row" style="justify-content: space-between; margin-bottom: 12px">
-    <div><strong id="crew-name"></strong> <span class="muted" id="mission-day"></span></div>
-    <div class="muted" id="earth-delay"></div>
-  </div>
-
-  <div class="card banner" id="banner" hidden></div>
-
-  <section class="tiles" id="tiles"></section>
-
-  <section class="card" id="alert" hidden>
-    <strong>What to do now</strong>
-    <div class="muted" id="protocol"></div>
-    <ul class="steps" id="steps"></ul>
-    <div class="row" style="margin-top: 12px">
-      <a href="ask.html"><button>Ask why</button></a>
-      <a href="checkin.html"><button>I feel unwell</button></a>
-    </div>
-  </section>
-
-  <section class="card" id="earth"></section>
-
-  <section class="card">
-    <div class="muted">Demo controls (not part of the astronaut's screen)</div>
-    <div class="row" id="scenarios" style="margin-top: 8px">
-      <button data-scenario="none">Normal</button>
-      <button data-scenario="radiation">Radiation event</button>
-      <button data-scenario="heart">Heart drift</button>
-      <button data-scenario="behavioral">Sleep and mood</button>
-    </div>
-  </section>
-</main>
+<main id="app"></main>
 <script type="module" src="js/home.js"></script>
 </body>
 </html>
