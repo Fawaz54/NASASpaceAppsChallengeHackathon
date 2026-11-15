@@ -1,20 +1,20 @@
 // Ask: the local AI explains readings and checklists in plain language.
 // It only explains what the rules decided; it never chooses what to do.
 import { get, post } from "./api.js";
-import { h, topbar, speakButton } from "./common.js";
+import { h, topbar, speakButton, requireUser } from "./common.js";
 
+await requireUser("astronaut");
 topbar("ask.html");
 const app = document.getElementById("app");
 const state = await get("/api/state");
-if (!state.profile) location.href = "profile.html";
 
 const alert = state.alert;
-const watching = state.areas.filter((a) => a.status !== "ok");
+const watching = state.vitals.filter((v) => v.status !== "ok");
 const suggestions = alert
   ? ["Why am I seeing this checklist?", "How serious is this?", "What happens if I wait?"]
   : watching.length
-    ? [`Why is ${watching[0].label.toLowerCase()} flagged?`, "What does my blood pressure tell me?", "Why does sleep matter on a mission?"]
-    : ["Are all my readings normal?", "What does my blood pressure tell me?", "Why does exercise matter in space?"];
+    ? [`Why is my ${watching[0].label.toLowerCase()} flagged?`, "What does my blood pressure tell me?", "Why does sleep matter on a mission?"]
+    : ["Are all my readings normal?", "What does my blood oxygen tell me?", "Why does exercise matter in space?"];
 
 const input = h("input", { id: "question", type: "text", placeholder: "Type a question about your readings" });
 const error = h("p", { class: "error" });

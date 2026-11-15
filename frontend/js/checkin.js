@@ -1,102 +1,120 @@
-// Daily check-in: mood, sleep, today's measurements and where anything hurts.
-// Saving it sends the daily report to the flight surgeon.
+// Daily check-in: several short assessments. Each one is a task; when all are
+// done the day's report goes to the flight surgeon. The questions come from
+// the backend (ASSESSMENTS in backend/main.py), so this file only draws them.
 import { get, post } from "./api.js";
-import { h, topbar } from "./common.js";
+import { h, topbar, requireUser, numberField } from "./common.js";
 import { createBodyMap } from "./bodymap.js";
 
+await requireUser("astronaut");
 topbar("checkin.html");
 const app = document.getElementById("app");
-const [state, indicators] = await Promise.all([get("/api/state"), get("/api/indicators")]);
-if (!state.profile) location.href = "profile.html";
+let info = await get("/api/assessments");
 
-const answers = { mood: null, sleep_hours: state.profile.sleep_hours || 7, pain: {} };
+// Each builder returns {node, read}. read() gives the answer, null if left
+// empty, or undefined if it is invalid (the field shows why).
+const BUILD = {
+  number(item, saved) {
+    return numberField({ id: item.key, label: item.label, unit: item.unit, min: item.min, max: item.max, value: saved });
+  },
+  scale(item, saved) {
+    let value = saved ?? null;
+    const buttons = [];
+    for (let n = item.min; n <= item.max; n += 1) {
+      buttons.push(h("button", { type: "button", class: n === value ? "selected" : "", style: "flex:1", "aria-label": `${n} of ${item.max}`,
+        onclick: () => { value = n; buttons.forEach((b, i) => b.classList.toggle("selected", i + item.min === n)); } }, String(n)));
+    }
+    return { node: h("div", {}, h("div", {}, item.label), item.hint ? h("div", { class: "muted" }, item.hint) : null,
+      h("div", { class: "row", style: "margin-top:8px" }, buttons)), read: () => value };
+  },
+  stepper(item, saved) {
+    let value = saved ?? info.defaults[item.key] ?? item.min;
+    const shown = h("strong", { style: "min-width:72px;text-align:center;font-size:20px" });
+    const show = () => { shown.textContent = `${value} ${item.unit}`; };
+    const move = (change) => { value = Math.min(item.max, Math.max(item.min, Math.round((value + change) / item.step) * item.step)); show(); };
+    show();
+    return { node: h("div", {}, h("div", {}, item.label),
+      h("div", { class: "row", style: "margin-top:8px" },
+        h("button", { type: "button", "aria-label": "Less", onclick: () => move(-item.step) }, "−"), shown,
+        h("button", { type: "button", "aria-label": "More", onclick: () => move(item.step) }, "+"))), read: () => value };
+  },
+  choice(item, saved, choices = item.choices) {
+    let value = saved ?? null;
+    const buttons = choices.map((choice) => h("button", { type: "button", class: choice === value ? "selected" : "",
+      onclick: () => { value = choice; buttons.forEach((b) => b.classList.toggle("selected", b.textContent === choice)); } }, choice));
+    return { node: h("div", {}, h("div", {}, item.label), h("div", { class: "row", style: "margin-top:8px" }, buttons)), read: () => value };
+  },
+  yesno(item, saved) {
+    return BUILD.choice(item, saved ?? "No", ["No", "Yes"]);
+  },
+  bodymap(item, saved) {
+    const pain = Object.fromEntries((saved || []).map((p) => [p.region, p.severity]));
+    const figureBox = h("div");
+    const list = h("div");
+    const figure = createBodyMap(figureBox, { onTap: (region) => { region in pain ? delete pain[region] : (pain[region] = 5); show(); } });
+    function show() {
+      figure.paint(Object.fromEntries(Object.keys(pain).map((region) => [region, "picked"])));
+      const rows = Object.keys(pain).map((region) => {
+        const out = h("strong", { style: "min-width:28px;text-align:right" }, String(pain[region]));
+        const slider = h("input", { type: "range", min: "1", max: "10", step: "1", value: String(pain[region]), "aria-label": `${region} pain level from 1 to 10`, style: "flex:1" });
+        slider.addEventListener("input", () => { pain[region] = Number(slider.value); out.textContent = slider.value; });
+        return h("div", { class: "row", style: "padding:4px 0" }, h("span", { style: "flex:0 0 100px" }, region), slider, out);
+      });
+      list.replaceChildren(...(rows.length
+        ? [h("div", { class: "muted" }, "Pain level for each area, from 1 (mild) to 10 (worst imaginable)"), ...rows]
+        : [h("p", { class: "muted" }, "Nothing marked.")]));
+    }
+    show();
+    return { node: h("div", {}, h("div", {}, item.label), h("div", { class: "grid-2", style: "margin:8px 0 0" }, figureBox, list)),
+      read: () => Object.entries(pain).map(([region, severity]) => ({ region, severity })) };
+  },
+};
 
-// ----- mood -----
-const moodButtons = [1, 2, 3, 4, 5].map((n) =>
-  h("button", { type: "button", style: "flex:1", "aria-label": `Mood ${n} of 5`, onclick: () => {
-    answers.mood = n;
-    moodButtons.forEach((b, i) => b.classList.toggle("selected", i + 1 === n));
-    error.textContent = "";
-  } }, String(n)));
-
-// ----- sleep -----
-const sleepValue = h("strong", { style: "min-width:64px;text-align:center;font-size:20px" });
-function showSleep() { sleepValue.textContent = `${answers.sleep_hours} h`; }
-function stepSleep(change) { answers.sleep_hours = Math.min(14, Math.max(0, Math.round((answers.sleep_hours + change) * 2) / 2)); showSleep(); }
-showSleep();
-
-// ----- measurements (optional) -----
-const MEASUREMENTS = [["systolic_bp", "mmHg", "118"], ["blood_sugar", "mg/dL", "92"], ["body_temp", "°C", "36.8"]];
-const measureInputs = {};
-const measurementFields = MEASUREMENTS.map(([metric, unit, hint]) => {
-  const input = h("input", { id: metric, type: "number", step: "any", inputmode: "decimal", placeholder: hint });
-  measureInputs[metric] = input;
-  return h("div", {},
-    h("label", { for: metric }, `${indicators[metric].label} (${unit})`), input,
-    h("div", { class: "muted small", style: "margin-top:4px" }, indicators[metric].how));
-});
-
-// ----- body map -----
-const figureBox = h("div");
-const painList = h("div");
-const figure = createBodyMap(figureBox, { onTap: (region) => {
-  if (region in answers.pain) delete answers.pain[region]; else answers.pain[region] = 5;
-  showPain();
-} });
-function showPain() {
-  figure.paint(Object.fromEntries(Object.keys(answers.pain).map((region) => [region, "picked"])));
-  const rows = Object.keys(answers.pain).map((region) => {
-    const out = h("strong", { style: "min-width:28px;text-align:right" }, String(answers.pain[region]));
-    const slider = h("input", { type: "range", min: "1", max: "10", step: "1", value: String(answers.pain[region]), "aria-label": `${region} pain from 1 to 10`, style: "flex:1" });
-    slider.addEventListener("input", () => { answers.pain[region] = Number(slider.value); out.textContent = slider.value; });
-    return h("div", { class: "row", style: "padding:4px 0" }, h("span", { style: "flex:0 0 100px" }, region), slider, out);
-  });
-  painList.replaceChildren(...(rows.length ? [h("div", { class: "muted" }, "How bad is it, from 1 to 10?"), ...rows]
-    : [h("p", { class: "muted" }, "Nothing marked. Skip this if nothing hurts.")]));
+function list(notice) {
+  const total = info.assessments.length;
+  const done = Object.keys(info.done).length;
+  app.replaceChildren(
+    h("h1", {}, "Daily check-in"),
+    notice || null,
+    h("p", { class: "muted" }, done === total
+      ? "All assessments are done for today. You can open one to change an answer."
+      : `${done} of ${total} done. When all are done, today's report is sent to the flight surgeon.`),
+    ...info.assessments.map((a) => {
+      const finished = a.id in info.done;
+      return h("button", { class: `task ${finished ? "done" : ""}`, onclick: () => form(a) },
+        h("span", {}, h("strong", {}, a.title), h("div", { class: "muted small" }, `${a.items.length} ${a.items.length === 1 ? "item" : "items"}`)),
+        h("span", { class: `badge ${finished ? "neutral" : "ok"}` }, finished ? "✓ Done" : "To do"));
+    }),
+    h("a", { class: "button", href: "index.html" }, "Back to home"));
 }
-showPain();
 
-const notes = h("textarea", { id: "notes", placeholder: "Anything else the flight surgeon should know (optional)" });
-const error = h("p", { class: "error" });
-const form = h("div");
-
-async function save() {
-  if (!answers.mood) { error.textContent = "Choose a mood from 1 to 5 before saving."; return; }
-  const measurements = {};
-  for (const [metric, input] of Object.entries(measureInputs)) {
-    if (input.value !== "") measurements[metric] = Number(input.value);
+function form(assessment) {
+  const saved = info.done[assessment.id] || {};
+  const fields = assessment.items.map((item) => [item, BUILD[item.type](item, saved[item.key])]);
+  const error = h("p", { class: "error" });
+  async function save() {
+    const data = {};
+    for (const [item, field] of fields) {
+      const value = field.read();
+      if (value === undefined) return;
+      data[item.key] = value;
+    }
+    const result = await post("/api/assessment", { id: assessment.id, data });
+    if (result.error) { error.textContent = result.error; return; }
+    info = await get("/api/assessments");
+    list(result.report_sent ? h("section", { class: "card good" },
+      h("h2", {}, "Report sent"),
+      h("p", { style: "margin:0" }, result.all_clear
+        ? "Everything is in range. Your report is on its way to Earth and will be acknowledged automatically."
+        : "Your report is on its way to the flight surgeon, who will reply with feedback. You will see it under Earth link on the home screen.")) : null);
+    window.scrollTo({ top: 0 });
   }
-  const result = await post("/api/checkin", {
-    mood: answers.mood, sleep_hours: answers.sleep_hours, measurements, notes: notes.value,
-    pain: Object.entries(answers.pain).map(([region, severity]) => ({ region, severity })),
-  });
-  form.replaceChildren(h("section", { class: `card banner ${result.all_clear ? "calm" : ""}`, style: result.all_clear ? "border-color:var(--ok);background:var(--ok-bg)" : "" },
-    h("h2", { style: result.all_clear ? "color:var(--ok)" : "" }, "Check-in saved"),
-    h("p", {}, result.all_clear
-      ? "Everything is in range. Your daily report is on its way to Earth and will be acknowledged automatically."
-      : "Something needs a look. Your daily report is on its way to the flight surgeon, who will reply."),
-    h("p", { class: "muted" }, `Signal delay: ${state.environment.delay_label}.`),
-    h("a", { class: "button", href: "index.html" }, "Back to home")));
+  app.replaceChildren(
+    h("h1", {}, assessment.title),
+    h("p", { class: "muted" }, assessment.intro),
+    h("section", { class: "card" }, fields.map(([, field]) => h("div", { class: "question" }, field.node))),
+    error,
+    h("div", { class: "row" }, h("button", { class: "primary", onclick: save }, "Save"), h("button", { onclick: () => list() }, "Back")));
   window.scrollTo({ top: 0 });
 }
 
-form.append(
-  h("section", { class: "card" }, h("h2", {}, "How is your mood today?"),
-    h("div", { class: "muted" }, "1 is very low, 5 is very good."),
-    h("div", { class: "row", style: "margin-top:8px" }, moodButtons)),
-  h("section", { class: "card" }, h("h2", {}, "How long did you sleep?"),
-    h("div", { class: "row" },
-      h("button", { type: "button", "aria-label": "Half an hour less", onclick: () => stepSleep(-0.5) }, "−"),
-      sleepValue,
-      h("button", { type: "button", "aria-label": "Half an hour more", onclick: () => stepSleep(0.5) }, "+"))),
-  h("section", { class: "card" }, h("h2", {}, "Today's measurements"),
-    h("p", { class: "muted" }, "Enter the ones you have taken. Leave the rest empty."),
-    h("div", { class: "fields" }, measurementFields)),
-  h("section", { class: "card" }, h("h2", {}, "Does anything hurt?"),
-    h("p", { class: "muted" }, "Tap where it hurts. Tap again to remove it."),
-    h("div", { class: "grid-2", style: "margin:0" }, figureBox, painList)),
-  h("section", { class: "card" }, h("label", { for: "notes" }, "Notes"), notes),
-  error,
-  h("button", { class: "primary", type: "button", onclick: save }, "Save and send daily report"),
-);
-app.append(h("h1", {}, "Daily check-in"), form);
+list();

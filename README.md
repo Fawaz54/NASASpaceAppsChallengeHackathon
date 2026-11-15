@@ -13,9 +13,10 @@ are drafts, not medical advice (see [docs/sources.md](docs/sources.md)).
 python3 backend/main.py
 ```
 
-Then open http://localhost:8000 for the crew screen and
-http://localhost:8000/doctor.html for the flight surgeon screen. Nothing to
-install; it uses only the Python standard library and works offline.
+Then open http://localhost:8000. Create an astronaut account or a flight
+surgeon account (username only, no passwords) and sign in. Each browser tab
+keeps its own sign-in, so one tab can be the crew and another the doctor.
+Nothing to install; it uses only the Python standard library and works offline.
 
 Optional extras:
 
@@ -24,6 +25,8 @@ Optional extras:
   explanations when none is running.
 - **Apple Watch baseline:** put a Health export in `private/` and run
   `python3 backend/simulator/watch_import.py private/export.zip`.
+- **Azure archive:** the Earth side can keep every report in Microsoft Azure
+  Blob Storage. Setup is in [docs/azure.md](docs/azure.md).
 - **Real NASA event:** `python3 backend/nasa_data/donki.py` refreshes the saved
   solar particle event (needs internet once).
 
@@ -31,18 +34,23 @@ Optional extras:
 
 | Situation | What happens |
 |---|---|
-| First launch | The crew member fills in a profile: pre-flight baseline, medical notes, and where they are (which sets the Earth delay) |
-| Every day | A ten-second check-in (mood, sleep, measurements, where anything hurts) sends a daily report to the flight surgeon. All-green reports are acknowledged automatically; anything else waits for the doctor's feedback |
+| First launch | Sign in, or create an account. Astronauts fill in a profile: pre-flight baseline, medical notes, and where they are (which sets the Earth delay, background radiation and gravity) |
+| Every day | Five short assessments (vitals, mind and sleep, vision, body and pain, food and water). When all are done, the day's report goes to the flight surgeon. All-green reports are acknowledged automatically; the rest wait for the doctor's feedback, and the report shows Sent, Delivered, then Reviewed |
 | A reading goes out of range | The home screen alerts immediately, shows a checklist, and tells Earth |
-| "I need help" | Alerts the crew medical officer and Earth at once, asks fixed questions, shows steps, and sends the assessment |
+| "I need help" | Alerts the crew medical officer and Earth at once, asks what happened and injury-specific questions plus fixed danger signs, shows steps, and sends the assessment |
 
-The home screen is a body figure coloured by status. Tapping a part shows
-its readings, what they mean, why they matter in space, and a 30-day chart
-against the crew member's own normal range.
+The home screen shows a body figure whose organs are coloured by status,
+small vitals tiles, and a Mission card with radiation (today and the mission
+total against NASA's career limit), exercise progress and mood. Mood and
+exercise are never shown in amber or red; the flight surgeon still sees
+their real status.
 
 The local AI explains readings and checklists and reads a typed description
 of symptoms. It never decides what the crew member should do: fixed rules
 and written checklists do that.
+
+The flight surgeon's screen also shows a mission control overview of a
+simulated corps of 100 astronauts (`data/crew_dataset.json`).
 
 ## Where things are
 
@@ -51,12 +59,14 @@ and written checklists do that.
 | `backend/main.py` | Server and all endpoints |
 | `backend/simulator/` | Simulated readings, demo scenarios, Apple Watch import |
 | `backend/rules/` | Status rules, drift detection, emergency questions |
+| `backend/crew.py` | The simulated corps of 100 |
 | `backend/comms.py` | Earth link with signal delay |
+| `backend/cloud.py` | Earth-side archive in Microsoft Azure |
 | `backend/ai/explain.py` | Ollama calls and their fallbacks |
 | `backend/nasa_data/donki.py` | NASA DONKI solar event fetcher |
 | `data/` | Limits, checklists and explanations as editable JSON |
 | `frontend/` | The screens (plain HTML, CSS and JavaScript) |
-| `private/` | Profile and smartwatch data; ignored by Git |
+| `private/` | Accounts, profiles, smartwatch data and the Azure link; ignored by Git |
 
 More detail: [docs/getting-started.md](docs/getting-started.md),
 [docs/contract.md](docs/contract.md), [docs/demo.md](docs/demo.md).

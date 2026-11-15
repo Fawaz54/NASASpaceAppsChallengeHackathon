@@ -9,7 +9,9 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
+import cloud
 import comms
+import crew
 import store
 from ai import explain
 from nasa_data import donki
@@ -18,117 +20,232 @@ from rules.engine import band, evaluate, indicators
 from simulator import simulator
 
 PORT = 8000
-MEASURED = {"systolic_bp": "Blood pressure", "blood_sugar": "Blood sugar", "body_temp": "Body temperature"}
-STATUS_WORD = {"ok": "OK", "watch": "WATCH", "act": "ACT"}
+STATUS_WORD = {"ok": "OK", "watch": "WATCH", "act": "ACT", "neutral": "OK"}
+VITALS = ["body_temp", "heart_rate", "systolic_bp", "spo2", "sleep_hours", "fluid_l", "blood_sugar"]
+CAREER_LIMIT_MSV = 600  # NASA-STD-3001 Vol 1 [V1 4030], see docs/sources.md
+
+# The daily check-in: several short assessments. The screens are drawn from
+# this list, so adding a question here adds it to the app.
+ASSESSMENTS = [
+    {"id": "vitals", "title": "Vitals check", "intro": "Take the measurements you can. Leave a box empty to keep the sensor reading.", "items": [
+        {"key": "systolic_bp", "type": "number", "label": "Blood pressure, upper number", "unit": "mmHg", "min": 60, "max": 250, "metric": True},
+        {"key": "spo2", "type": "number", "label": "Blood oxygen", "unit": "%", "min": 70, "max": 100, "metric": True},
+        {"key": "body_temp", "type": "number", "label": "Body temperature", "unit": "°C", "min": 30, "max": 43, "metric": True},
+        {"key": "blood_sugar", "type": "number", "label": "Blood sugar", "unit": "mg/dL", "min": 20, "max": 600, "metric": True},
+    ]},
+    {"id": "mind", "title": "Mind and sleep", "intro": "There are no right answers. This helps the flight surgeon support you.", "items": [
+        {"key": "mood", "type": "scale", "label": "How is your mood today?", "hint": "1 is very low, 5 is very good.", "min": 1, "max": 5, "required": True, "metric": True},
+        {"key": "sleep_hours", "type": "stepper", "label": "How long did you sleep?", "unit": "h", "min": 0, "max": 16, "step": 0.5, "required": True, "metric": True},
+        {"key": "concentration", "type": "yesno", "label": "Any trouble concentrating today?", "flag": True},
+    ]},
+    {"id": "vision", "title": "Vision check", "intro": "Vision can change slowly on long missions, so it is checked every day.", "items": [
+        {"key": "blurry", "type": "yesno", "label": "Is your vision blurrier than usual?", "flag": True},
+        {"key": "reading", "type": "yesno", "label": "Any trouble reading small text?", "flag": True},
+        {"key": "eye_ache", "type": "yesno", "label": "Any headache behind the eyes?", "flag": True},
+    ]},
+    {"id": "body", "title": "Body and pain", "intro": "Tap where it hurts and set the pain level. Skip the figure if nothing hurts.", "items": [
+        {"key": "pain", "type": "bodymap", "label": "Where does it hurt?"},
+    ]},
+    {"id": "intake", "title": "Food and water", "intro": "What you have had so far today.", "items": [
+        {"key": "fluid_l", "type": "stepper", "label": "Water and other drinks", "unit": "L", "min": 0, "max": 10, "step": 0.25, "required": True, "metric": True},
+        {"key": "meals", "type": "choice", "label": "Meals eaten", "choices": ["0", "1", "2", "3 or more"], "required": True},
+    ]},
+]
 
 
 # ---------- building what the screens show ----------
 
+def who():
+    return (store.accounts.get(store.current) or {}).get("full_name") or "Crew member"
+
+
 def snapshot():
     readings = simulator.current_readings()
-    areas, alert, all_green = evaluate(readings)
-    return readings, areas, alert, all_green
+    metrics, areas, alert = evaluate(readings)
+    return metrics, areas, alert
 
 
-def area_lines(areas):
-    lines = []
-    for area in areas:
-        values = ", ".join(f"{m['label'].lower()} {m['value']} {m['unit']}" for m in area["metrics"])
-        note = f" [{area['note']}]" if area["note"] else ""
-        lines.append(f"{area['label']}: {STATUS_WORD[area['status']]} ({values}){note}")
-    return lines
+def metric_lines(metrics):
+    return [f"{m['label']}: {m['value']} {m['unit']} [{STATUS_WORD[m['report_status']]}]"
+            + (f" ({m['note']})" if m["note"] else "") for m in metrics]
 
 
-def who():
-    return (store.profile or {}).get("name") or "Crew member"
-
-
-def report_alert(alert, areas):
+def report_alert(alert, metrics):
     """Tell Earth once when a new alert appears."""
     protocol_id = alert["protocol_id"] if alert else None
     if protocol_id and protocol_id != store.last_alert:
-        area = next(a for a in areas if a["id"] == alert["area"])
+        cause = [m for m in metrics if m["area"] == alert["area"]]
         comms.send("ship", "alert", f"Alert: {alert['title']}", "\n".join([
             f"Automatic alert for {who()}, mission day {store.mission_day()}.",
-            *area_lines([area]),
+            *metric_lines(cause),
             f"Checklist shown to crew member: {protocol_id} ({len(alert['steps'])} steps).",
         ]))
     store.last_alert = protocol_id
 
 
-def reminders():
-    if store.checkin_date != store.today():
-        return [{"text": "Daily check-in due: mood, sleep and today's readings", "href": "checkin.html"}]
-    return [{"text": f"{label} not measured today", "href": "checkin.html"}
-            for metric, label in MEASURED.items() if store.manual_dates.get(metric) != store.today()]
+def todays_assessments():
+    if store.assessments_date != store.today():
+        store.assessments = {}
+        store.assessments_date = store.today()
+    return store.assessments
+
+
+def nudges(metrics):
+    """Gentle, private prompts for readings that are never shown in red."""
+    found = []
+    by_name = {m["metric"]: m for m in metrics}
+    mood, exercise = by_name["mood"], by_name["exercise_pct"]
+    if mood["report_status"] != "ok":
+        requested = store.ticks.get("_call") == store.today()
+        found.append({"id": "mood", "requested": requested,
+                      "text": "Your mood ratings have been lower than usual lately. That is common on long missions, and "
+                              "you do not have to handle it alone.",
+                      "action": None if requested else "Request a private call with the flight surgeon"})
+    if exercise["report_status"] != "ok":
+        found.append({"id": "exercise", "requested": False, "action": None,
+                      "text": f"You have done {exercise['value']}% of this week's exercise plan. "
+                              "One session today gets you back on track."})
+    return found
 
 
 def build_state():
-    readings, areas, alert, all_green = snapshot()
-    report_alert(alert, areas)
+    metrics, areas, alert = snapshot()
+    report_alert(alert, metrics)
     env = store.environment()
-    checked_in = store.checkin_date == store.today()
+    by_name = {m["metric"]: m for m in metrics}
+    done = list(todays_assessments())
+    dose = by_name["dose_rate"]
+    total = round(env["dose_rate"] * store.mission_day(), 1)
     return {
+        "user": {"username": store.current, "full_name": who()},
         "profile": store.profile,
         "environment": {**env, "delay_label": comms.delay_label(), "delay_demo_seconds": round(comms.delay_demo(), 1)},
         "mission_day": store.mission_day(),
         "scenario": simulator.get_scenario(),
         "scenarios": {key: value["label"] for key, value in simulator.SCENARIOS.items()},
-        "readings": readings,
+        "vitals": [by_name[name] for name in VITALS],
         "areas": areas,
+        "radiation": {**dose, "mission_total": total, "career_limit": CAREER_LIMIT_MSV,
+                      "percent_of_limit": round(100 * total / CAREER_LIMIT_MSV, 1)},
+        "exercise": {**by_name["exercise_pct"], "streak_days": simulator.exercise_streak()},
+        "mood": {**by_name["mood"], "week": [round(v) for v in simulator.history("mood")[-7:]]},
         "alert": alert,
-        "all_green": all_green,
+        "all_green": all(a["status"] in ("ok", "neutral") for a in areas.values()),
+        "nudges": nudges(metrics),
         "nasa_event": donki.saved_event() if alert and alert["area"] == "radiation" else None,
         "ticks": store.ticks.get(alert["protocol_id"], []) if alert else [],
         "emergency": store.emergency,
-        "messages": comms.ship_view()[:8],
-        "reminders": reminders(),
-        "pain": (store.checkin or {}).get("pain", []) if checked_in else [],
+        "messages": comms.ship_view(store.current)[:10],
+        "checkin": {"done": done, "total": len(ASSESSMENTS), "sent": store.checkin_date == store.today()},
+        "pain": (store.assessments.get("body") or {}).get("pain", []),
         "ai": {"available": bool(explain.model()), "model": explain.model()},
     }
 
 
-# ---------- actions ----------
+# ---------- accounts ----------
 
-def save_checkin(body):
-    pain = [p for p in body.get("pain") or [] if p.get("region") in triage.REGIONS]
-    store.checkin = {"mood": body.get("mood"), "sleep_hours": body.get("sleep_hours"),
-                     "pain": pain, "notes": (body.get("notes") or "").strip()[:500]}
+def account_public(username):
+    account = store.accounts[username]
+    return {"username": username, "role": account["role"], "full_name": account["full_name"]}
+
+
+def login(body):
+    username = store.slug(body.get("username"))
+    if username not in store.accounts:
+        return {"error": "No account with that username. Check the spelling or create a new account."}
+    return account_public(username)
+
+
+def signup(body):
+    username, problem = store.create_account(body.get("role"), body.get("full_name"), body.get("username"), body)
+    return {"error": problem} if problem else account_public(username)
+
+
+# ---------- daily check-in ----------
+
+def save_assessment(body):
+    definition = next((a for a in ASSESSMENTS if a["id"] == body.get("id")), None)
+    if not definition:
+        return {"error": "Unknown assessment."}
+    data, answers = body.get("data") or {}, {}
+    for item in definition["items"]:
+        value = data.get(item["key"])
+        if item["type"] == "bodymap":
+            answers["pain"] = [{"region": p["region"], "severity": int(p.get("severity", 5))} for p in value or []
+                               if p.get("region") in triage.REGIONS and 1 <= p.get("severity", 5) <= 10]
+            continue
+        if value in ("", None):
+            if item.get("required"):
+                return {"error": f"Answer \"{item['label']}\" before saving."}
+            continue
+        if item["type"] in ("number", "stepper", "scale"):
+            if not isinstance(value, (int, float)) or not item["min"] <= value <= item["max"]:
+                return {"error": f"{item['label']} must be between {item['min']} and {item['max']}."}
+        elif item["type"] == "yesno" and value not in ("Yes", "No"):
+            continue
+        elif item["type"] == "choice" and value not in item["choices"]:
+            continue
+        answers[item["key"]] = value
+        if item.get("metric"):
+            store.manual[item["key"]] = value
+            store.manual_dates[item["key"]] = store.today()
+
+    done = todays_assessments()
+    done[definition["id"]] = answers
+    result = {"saved": True, "done": list(done), "report_sent": False}
+    if len(done) == len(ASSESSMENTS) and store.checkin_date != store.today():
+        result["all_clear"] = send_daily_report()
+        result["report_sent"] = True
+    return result
+
+
+def send_daily_report():
+    metrics, _, _ = snapshot()
+    done = todays_assessments()
+    pain = done.get("body", {}).get("pain", [])
+    concerns = [item["label"] for a in ASSESSMENTS for item in a["items"]
+                if item.get("flag") and done.get(a["id"], {}).get(item["key"]) == "Yes"]
+    all_clear = (all(m["report_status"] == "ok" for m in metrics) and not concerns
+                 and max((p["severity"] for p in pain), default=0) < 4)
+    lines = [f"Daily report for {who()}, mission day {store.mission_day()}, {store.environment()['label']}.", "",
+             *metric_lines(metrics), "",
+             "Pain: " + (", ".join(f"{p['region']} {p['severity']}/10" for p in pain) or "none reported"),
+             "Answered yes: " + ("; ".join(concerns) if concerns else "nothing"),
+             f"Meals eaten today: {done.get('intake', {}).get('meals', 'not given')}", "",
+             "Result: all indicators in range." if all_clear else "Result: needs flight surgeon review."]
+    comms.send("ship", "daily_report", f"{store.today()}_{store.current}_dailyreport", "\n".join(lines), all_green=all_clear)
+    store.checkin = dict(done)
     store.checkin_date = store.today()
-    entered = {"mood": body.get("mood"), "sleep_hours": body.get("sleep_hours"), **(body.get("measurements") or {})}
-    for metric, value in entered.items():
-        if metric in simulator.METRICS and isinstance(value, (int, float)):
-            store.manual[metric] = value
-            store.manual_dates[metric] = store.today()
+    return all_clear
 
-    _, areas, _, all_green = snapshot()
-    worst_pain = max((p.get("severity", 0) for p in pain), default=0)
-    all_clear = all_green and worst_pain < 4
-    pain_text = ", ".join(f"{p['region']} {p.get('severity', '?')}/10" for p in pain) or "none reported"
-    lines = [f"Daily report for {who()}, mission day {store.mission_day()}, {store.environment()['label']}.",
-             *area_lines(areas), f"Pain: {pain_text}"]
-    if store.checkin["notes"]:
-        lines.append(f"Crew member's note: {store.checkin['notes']}")
-    lines.append("Result: all indicators in range." if all_clear else "Result: needs flight surgeon review.")
-    comms.send("ship", "daily_report", "Daily report", "\n".join(lines), all_green=all_clear)
-    return {"saved": True, "all_clear": all_clear}
 
+def assessments(_query):
+    return {"assessments": ASSESSMENTS, "done": todays_assessments(), "sent": store.checkin_date == store.today(),
+            "defaults": {"sleep_hours": (store.profile or {}).get("sleep_hours") or 7, "fluid_l": 2},
+            "regions": triage.REGIONS}
+
+
+def nudge(body):
+    if body.get("id") == "mood" and store.ticks.get("_call") != store.today():
+        store.ticks["_call"] = store.today()
+        comms.send("ship", "update", "Private call requested",
+                   f"{who()} would like a private call with the flight surgeon.")
+    return {"sent": True}
+
+
+# ---------- emergency ----------
 
 def start_emergency(body):
     if store.emergency:
         return store.emergency  # already called; do not alert twice
-    description = (body.get("description") or "").strip()[:500]
-    prefill, used_ai = ({"regions": [], "severity": None, "onset": None}, False)
-    if description:
-        prefill, used_ai = explain.read_description(description, triage.REGIONS, triage.ONSETS)
-    _, areas, _, _ = snapshot()
-    store.emergency = {"started_at": time.time(), "description": description, "prefill": prefill,
-                       "prefill_by_ai": used_ai, "stage": "questions", "crew_alerted": True, "protocol": None}
+    metrics, _, _ = snapshot()
+    store.emergency = {"started_at": time.time(), "description": "", "stage": "questions", "crew_alerted": True,
+                       "prefill": {"type": None, "regions": [], "severity": None, "onset": None},
+                       "prefill_by_ai": False, "protocol": None}
     comms.send("ship", "emergency", "EMERGENCY: crew member needs help", "\n".join([
         f"{who()} pressed 'I need help' on mission day {store.mission_day()}.",
-        f"In their words: {description}" if description else "No description given yet.",
         "Crew medical officer alerted on board.",
-        "Readings at that moment:", *area_lines(areas),
+        "Readings at that moment:", *metric_lines(metrics),
     ]))
     return store.emergency
 
@@ -138,7 +255,8 @@ def describe_emergency(body):
     if not store.emergency:
         return {"error": "no active emergency"}
     description = (body.get("description") or "").strip()[:500]
-    prefill, used_ai = explain.read_description(description, triage.REGIONS, triage.ONSETS)
+    prefill, used_ai = explain.read_description(description, triage.REGIONS, triage.ONSETS,
+                                                [t["id"] for t in triage.TYPES])
     store.emergency.update({"description": description, "prefill": prefill, "prefill_by_ai": used_ai})
     return store.emergency
 
@@ -146,9 +264,13 @@ def describe_emergency(body):
 def answer_emergency(body):
     if not store.emergency:
         return {"error": "no active emergency"}
+    kind = triage.find_type(body.get("type"))
+    severity = body.get("severity")
     answers = {
+        "type": kind["id"] if kind else None,
+        "details": body.get("details") if isinstance(body.get("details"), dict) else {},
         "regions": [r for r in body.get("regions") or [] if r in triage.REGIONS],
-        "severity": body.get("severity"),
+        "severity": severity if isinstance(severity, int) and 1 <= severity <= 10 else None,
         "onset": body.get("onset") if body.get("onset") in triage.ONSETS else None,
         "signs": [s["id"] for s in triage.SIGNS if s["id"] in (body.get("signs") or [])],
     }
@@ -158,8 +280,10 @@ def answer_emergency(body):
     comms.send("ship", "emergency", "Emergency assessment", "\n".join([
         f"Assessment for {who()}.",
         f"In their words: {store.emergency['description'] or 'no description given'}",
+        f"What happened: {kind['label'] if kind else 'not specified'}",
+        *triage.describe_details(kind, answers["details"]),
         f"Where: {', '.join(answers['regions']) or 'not specified'}",
-        f"Severity: {answers['severity'] or '?'}/10",
+        f"Pain level: {answers['severity'] or '?'}/10",
         f"Started: {answers['onset'] or 'not specified'}",
         "Danger signs answered yes: " + ("; ".join(signs) if signs else "none"),
         f"Checklist shown to crew member: {protocol['protocol_id']} ({protocol['title']}).",
@@ -175,10 +299,12 @@ def resolve_emergency(_body):
     return {"resolved": True}
 
 
+# ---------- other crew actions ----------
+
 def save_ticks(body):
     protocol_id, done = body.get("protocol_id"), sorted(set(body.get("done") or []))
     store.ticks[protocol_id] = done
-    _, _, alert, _ = snapshot()
+    _, _, alert = snapshot()
     if (alert and alert["protocol_id"] == protocol_id and len(done) == len(alert["steps"])
             and protocol_id not in store.completed_reported):
         store.completed_reported.add(protocol_id)
@@ -188,10 +314,22 @@ def save_ticks(body):
 
 
 def ask(body):
-    _, areas, alert, _ = snapshot()
-    answer, based_on, used_ai = explain.ask((body.get("question") or "")[:300], areas, alert, indicators())
+    metrics, _, alert = snapshot()
+    answer, based_on, used_ai = explain.ask((body.get("question") or "")[:300], metrics, alert, indicators())
     return {"answer": answer, "based_on": based_on, "used_ai": used_ai}
 
+
+def history(query):
+    metric = (query.get("metric") or [""])[0]
+    if metric not in simulator.METRICS:
+        return {"error": "unknown metric"}
+    info = indicators().get(metric, {})
+    return {"metric": metric, "label": info.get("label", metric), "unit": simulator.METRICS[metric][1],
+            "baseline": simulator.baseline(metric), "band": band(metric), "values": simulator.history(metric),
+            "crew_average": crew.averages().get(metric)}
+
+
+# ---------- demo controls ----------
 
 def set_scenario(body):
     name = body.get("name", "none")
@@ -204,45 +342,51 @@ def set_scenario(body):
 
 def reset(_body):
     simulator.set_scenario("none")
-    store.checkin = store.checkin_date = store.emergency = store.last_alert = None
-    store.messages.clear()
-    store.ticks.clear()
-    store.completed_reported.clear()
+    store.reset_states()
     return {"reset": True}
+
+
+# ---------- flight surgeon ----------
+
+def doctor_view(_query):
+    astronauts = [{**account_public(name), "location": store.environment(name)["label"],
+                   "delay_label": comms.delay_label(name), "profile": store.accounts[name]["profile"]}
+                  for name, account in store.accounts.items() if account["role"] == "astronaut"]
+    return {"astronauts": astronauts, "messages": comms.earth_view(),
+            "in_transit": comms.replies_in_transit(), "cloud": cloud.status()}
 
 
 def doctor_reply(body):
     text = (body.get("text") or "").strip()[:1000]
+    target = body.get("crew")
     if not text:
-        return {"error": "empty reply"}
-    comms.send("earth", "feedback", "Flight surgeon", text)
+        return {"error": "Write a reply first."}
+    if (store.accounts.get(target) or {}).get("role") != "astronaut":
+        return {"error": "Choose which crew member to reply to."}
+    reply_to = body.get("reply_to") if isinstance(body.get("reply_to"), int) else None
+    comms.send("earth", "feedback", f"Flight surgeon {who() if store.current else ''}".strip(), text,
+               crew=target, reply_to=reply_to)
     return {"sent": True}
-
-
-def history(query):
-    metric = (query.get("metric") or [""])[0]
-    if metric not in simulator.METRICS:
-        return {"error": "unknown metric"}
-    info = indicators().get(metric, {})
-    return {"metric": metric, "label": info.get("label", metric), "unit": simulator.METRICS[metric][1],
-            "baseline": simulator.baseline(metric), "band": band(metric), "values": simulator.history(metric)}
 
 
 GET = {
     "/api/state": lambda q: build_state(),
     "/api/profile": lambda q: {"profile": store.profile, "suggested": store.watch_baseline(),
-                               "environments": store.ENVIRONMENTS},
+                               "environments": store.ENVIRONMENTS, "ranges": store.PROFILE_RANGES},
     "/api/indicators": lambda q: indicators(),
     "/api/triage": lambda q: triage.questions(),
+    "/api/assessments": assessments,
     "/api/history": history,
-    "/api/doctor": lambda q: {"profile": store.profile, "environment": store.environment(),
-                              "delay_label": comms.delay_label(), "messages": comms.earth_view(),
-                              "in_transit": comms.replies_in_transit()},
+    "/api/doctor": doctor_view,
+    "/api/crew": lambda q: crew.overview(),
 }
 POST = {
+    "/api/login": login,
+    "/api/signup": signup,
     "/api/profile": lambda body: {"profile": store.save_profile(body)},
     "/api/scenario": set_scenario,
-    "/api/checkin": save_checkin,
+    "/api/assessment": save_assessment,
+    "/api/nudge": nudge,
     "/api/steps": save_ticks,
     "/api/ask": ask,
     "/api/emergency/start": start_emergency,
@@ -252,6 +396,10 @@ POST = {
     "/api/doctor/reply": doctor_reply,
     "/api/reset": reset,
 }
+# These need a signed-in astronaut.
+CREW_ONLY = {"/api/state", "/api/assessments", "/api/history", "/api/assessment", "/api/nudge", "/api/steps",
+             "/api/ask", "/api/emergency/start", "/api/emergency/describe", "/api/emergency/answer",
+             "/api/emergency/resolve"}
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -273,10 +421,23 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
+    def _run(self, path, handler, argument):
+        """Run one endpoint as the user named in the request."""
+        with store.lock:
+            store.activate(self.headers.get("X-User"))
+            try:
+                if path in CREW_ONLY and store.profile is None:
+                    return {"error": "signin"}
+                if path == "/api/profile" and self.command == "POST" and store.profile is None:
+                    return {"error": "signin"}
+                return handler(argument)
+            finally:
+                store.deactivate()
+
     def do_GET(self):
         url = urlsplit(self.path)
         if url.path in GET:
-            return self._send_json(GET[url.path](parse_qs(url.query)))
+            return self._send_json(self._run(url.path, GET[url.path], parse_qs(url.query)))
         return super().do_GET()
 
     def do_POST(self):
@@ -288,12 +449,12 @@ class Handler(SimpleHTTPRequestHandler):
             body = json.loads(self.rfile.read(length) or b"{}")
         except ValueError:
             return self._send_json({"error": "invalid JSON"})
-        return self._send_json(POST[path](body if isinstance(body, dict) else {}))
+        return self._send_json(self._run(path, POST[path], body if isinstance(body, dict) else {}))
 
 
 if __name__ == "__main__":
-    store.load_profile()
+    store.load_accounts()
+    cloud.start()
     handler = partial(Handler, directory=str(store.ROOT / "frontend"))
-    print(f"Crew screen:   http://localhost:{PORT}")
-    print(f"Doctor screen: http://localhost:{PORT}/doctor.html")
+    print(f"Open http://localhost:{PORT}")
     ThreadingHTTPServer(("127.0.0.1", PORT), handler).serve_forever()

@@ -80,13 +80,13 @@
     "source": "Steps written by the team. Not medical advice."
   },
   "MND-01": {
-    "title": "Sleep and mood have dropped",
-    "why": "You have been sleeping much less than usual or rating your mood low, and both affect safety and performance.",
+    "title": "Your sleep has dropped well below your usual",
+    "why": "You have been sleeping much less than usual, which affects attention, mood and safety.",
     "steps": [
-      "Tell a crewmate how you are doing",
       "Move one task off today's schedule",
+      "Avoid caffeine for the rest of the day",
       "Start winding down 30 minutes earlier tonight",
-      "Ask for a private call with the flight surgeon"
+      "Tell the flight surgeon if this continues for three nights"
     ],
     "source": "Steps written by the team. Not medical advice. Supported by NASA's behavioral evidence report and Barger et al. (2014) on crew sleep."
   },
@@ -204,6 +204,77 @@
       "Measure your temperature, heart rate and blood pressure",
       "Drink water and rest",
       "Press 'I need help' again if anything gets worse"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "LNG-01": {
+    "title": "Blood oxygen is low",
+    "why": "Your blood is carrying less oxygen than it should.",
+    "steps": [
+      "Stop what you are doing and rest",
+      "Take slow, deep breaths for two minutes",
+      "Check the cabin air alarms and move to another module if any are active",
+      "Measure your blood oxygen again after five minutes",
+      "Press 'I need help' if you feel short of breath"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "GEN-05": {
+    "title": "You have not had enough to drink",
+    "why": "Your water intake today is well below the daily plan.",
+    "steps": [
+      "Drink 250 ml of water now",
+      "Drink another 250 ml each hour until you reach 2 litres",
+      "Note the colour of your urine at your next visit",
+      "Tell the flight surgeon if you feel dizzy or have a headache"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "EMG-CUT": {
+    "title": "Cut or scratch",
+    "why": "Small wounds heal more slowly in space, so cleaning and covering them matters.",
+    "steps": [
+      "Put on gloves from the medical kit",
+      "Press on the wound with clean gauze until bleeding stops",
+      "Clean around it with an antiseptic wipe",
+      "Cover it with a sterile dressing",
+      "Tell the crew medical officer if anything is stuck in it or it will not close"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "EMG-BRUISE": {
+    "title": "Bruise or impact",
+    "why": "A hard knock can hide a deeper injury, so check movement and swelling.",
+    "steps": [
+      "Stop using the injured area",
+      "Apply a cold pack for 15 minutes",
+      "Check that you can move it and feel your fingers or toes",
+      "Tell the crew medical officer if you cannot move it or the swelling keeps growing",
+      "Rate the pain again in 30 minutes"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "EMG-BURN": {
+    "title": "Burn",
+    "why": "Burns need cooling quickly and protection from infection.",
+    "steps": [
+      "Move away from what caused the burn",
+      "Cool the burn with a cool, wet cloth for 10 minutes",
+      "Remove anything tight near the burn before it swells",
+      "Cover it loosely with a sterile dressing",
+      "Do not break blisters; tell the crew medical officer if it is blistered, large, chemical or electrical"
+    ],
+    "source": "Steps written by the team. Not medical advice."
+  },
+  "EMG-ILL": {
+    "title": "Feeling ill",
+    "why": "In a closed cabin an illness can spread, so it is checked early.",
+    "steps": [
+      "Stop your current task and rest",
+      "Measure your temperature, heart rate and blood oxygen",
+      "Drink water in small sips",
+      "Keep your distance from crewmates where you can",
+      "Press 'I need help' again if you get worse"
     ],
     "source": "Steps written by the team. Not medical advice."
   }

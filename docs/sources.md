@@ -18,6 +18,15 @@ Researched 14 November 2026.
 | [NASA DONKI](https://ccmc.gsfc.nasa.gov/DONKI/api/) (CCMC, Goddard) | The radiation scenario names a real solar particle event. Its timing is real; dose values are simulated. | `2026-09-05T16:18:00-SEP-001`, measured by SOHO COSTEP. See `data/donki_event.json` | Page |
 | Curiosity RAD (Mars Science Laboratory) | Background radiation on Mars and in transit | Via the published results below | Page |
 
+## Simulated crew dataset
+
+`data/crew_dataset.json` is a crew of 100 astronauts made by the team from
+published ranges (heart rate, blood pressure, oxygen saturation, sleep,
+radiation by mission phase and more). It is **simulated, not real astronaut
+data**, and is labelled that way wherever the app shows it. It is used for
+the mission control overview and for the "crew average" line on charts. It
+is not evidence for any limit.
+
 ## Radiation
 
 | What the app uses | Value | Source | Checked |
@@ -48,6 +57,8 @@ Researched 14 November 2026.
 | Blood sugar, low | Below 70 mg/dL is level 1 hypoglycemia, the level to treat; below 54 mg/dL is level 2 | American Diabetes Association, Standards of Care in Diabetes, section 6; [ADA patient sheet](https://professional.diabetes.org/sites/dpro/files/2025-05/hypoglycemia-patient-5-27-25.pdf) | Summary | The 80 mg/dL watch level |
 | Blood sugar, high | Not sourced yet | | | 140 and 180 mg/dL |
 | Blood sugar in space | Evidence is mixed: bed-rest and small spaceflight studies suggest reduced insulin sensitivity, but results conflict | No NASA report found; journal reviews only | Summary | |
+| Blood oxygen | Not sourced yet | | | 95% and 92% |
+| Water intake | Not sourced yet | | | 2.0 and 1.2 litres a day |
 | Resting heart rate | Weightlessness shifts fluid toward the head and changes blood volume, flow and pressure, altering the heart and vessels | [NASA Human Research Roadmap: Risk of Cardiovascular Adaptations](https://humanresearchroadmap.nasa.gov/Risks/risk.aspx?i=179) | Summary | 12% and 20% above personal baseline |
 | Sleep | NASA schedules 8.5 hours; station crews averaged 6.09 hours | Barger et al., Lancet Neurology 13:904-912, 2014, doi 10.1016/S1474-4422(14)70122-X | Summary | 6.5 and 5.5 hour levels |
 | Mood | Isolation and confinement can cause cognitive and behavioral changes, with higher risk on longer missions | [NASA Evidence Report: Risk of Adverse Cognitive or Behavioral Changes](https://humanresearchroadmap.nasa.gov/evidence/reports/HRP-ER-BMED-HFBP-20250210.pdf) (2025) | Summary | The 1 to 5 scale and its levels |
@@ -63,13 +74,13 @@ Researched 14 November 2026.
 | RAD-01 | Steps adapted from NASA's Orion shelter procedure (see Radiation above) |
 | BON-01 | Team-written. Supported by NASA's two hours of daily exercise and the bone loss rate above |
 | MND-01 | Team-written. Supported by the NASA behavioral evidence report and the sleep study above |
-| HRT-01, HRT-02 | Team-written. Not medical advice |
+| HRT-01, HRT-02, LNG-01, GEN-05 | Team-written. Not medical advice |
 | GEN-01 to GEN-04 | Team-written. The trigger levels are sourced above; the steps are not |
 | EMG-* (emergency) | Team-written first-aid-level steps. Not medical advice. Leads for a real source: NASA's Shuttle Medical Checklist (JSC-48031) and the ISS Emergency Medical Procedures Manual |
 
 ## Still open
 
-- A published source for the low blood pressure, low temperature and high blood sugar levels.
+- A published source for the low blood pressure, low temperature, high blood sugar, blood oxygen and water intake levels.
 - A real source for the emergency and general-health checklist steps.
 - Confirming every row marked "Summary" by opening the link.
 - NASA's own dose-rate alert thresholds are not public, so the app's values will stay team-chosen.

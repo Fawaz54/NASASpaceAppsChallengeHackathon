@@ -46,10 +46,11 @@ plain JSON files, so they can be edited without programming.
 
    On Windows the command may be `python backend/main.py`.
 
-5. Open http://localhost:8000 in your browser. The first time, it asks you
-   to set up a profile. After that you see the home screen: a body figure
-   and five health areas. Click "Solar particle event" at the bottom: within
-   a few seconds the Radiation area turns red and a checklist appears.
+5. Open http://localhost:8000 in your browser. Create an astronaut account
+   (username only, no password). You then see the home screen: a body
+   figure, vitals tiles and a Mission card. Click "Solar particle event" at
+   the bottom: within a few seconds the outline round the body turns red
+   and a checklist appears.
 
 `localhost` means "this computer". Each person runs their own copy; nobody
 else can see yours. Always open the app through that address, not by

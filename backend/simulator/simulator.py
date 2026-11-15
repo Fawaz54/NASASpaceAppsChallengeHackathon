@@ -15,7 +15,9 @@ METRICS = {
     "dose_rate": (0.7, "mSv/day", 0.04, 2),
     "heart_rate": (62, "bpm", 1.5, 0),
     "systolic_bp": (118, "mmHg", 2, 0),
+    "spo2": (97.6, "%", 0.4, 0),
     "body_temp": (36.8, "°C", 0.1, 1),
+    "fluid_l": (2.4, "L", 0, 1),
     "blood_sugar": (92, "mg/dL", 3, 0),
     "exercise_pct": (92, "%", 0, 0),
     "sleep_hours": (7.2, "h", 0, 1),
@@ -27,6 +29,7 @@ METRICS = {
 SCENARIOS = {
     "none": {"label": "Normal day", "speed": "fast", "targets": {}},
     "radiation": {"label": "Solar particle event", "speed": "fast", "targets": {"dose_rate": ("abs", 8.0)}},
+    "oxygen": {"label": "Low blood oxygen", "speed": "fast", "targets": {"spo2": ("abs", 90.5), "heart_rate": ("mul", 1.1)}},
     "fever": {"label": "Fever", "speed": "fast", "targets": {"body_temp": ("abs", 38.6), "heart_rate": ("mul", 1.14)}},
     "heart": {"label": "Heart drift", "speed": "slow",
               "targets": {"heart_rate": ("mul", 1.16), "systolic_bp": ("mul", 1.11)}},
@@ -39,6 +42,11 @@ DRIFT_DAYS = 7      # how many days a slow scenario has been building
 
 _scenario = "none"
 _started = 0.0
+
+
+def exercise_streak():
+    """Days in a row with exercise done (simulated)."""
+    return 0 if _scenario == "exercise" else 12
 
 
 def get_scenario():
@@ -58,13 +66,12 @@ def set_scenario(name):
 def baseline(metric):
     """What is normal for this crew member."""
     profile = store.profile or {}
-    watch = store.watch_baseline() or {}
     if metric == "dose_rate":
         return store.environment()["dose_rate"]
     if metric == "heart_rate":
-        return profile.get("resting_hr") or watch.get("resting_hr") or METRICS[metric][0]
+        return profile.get("resting_hr") or METRICS[metric][0]
     if metric == "sleep_hours":
-        return profile.get("sleep_hours") or watch.get("sleep_hours") or METRICS[metric][0]
+        return profile.get("sleep_hours") or METRICS[metric][0]
     if metric == "systolic_bp":
         return profile.get("systolic_bp") or METRICS[metric][0]
     return METRICS[metric][0]
@@ -115,7 +122,10 @@ def history(metric, days=30):
     values = [base + rng.uniform(-spread, spread) for _ in range(days)]
 
     # Real daily values from the Apple Watch import, where we have them.
-    daily = (store.watch_baseline() or {}).get("daily", {}).get(metric)
+    watch = store.watch_baseline() or {}
+    watch_key = {"heart_rate": "resting_hr", "sleep_hours": "sleep_hours"}.get(metric)
+    uses_watch = watch_key and (store.profile or {}).get(watch_key) == watch.get(watch_key)
+    daily = watch.get("daily", {}).get(metric) if uses_watch else None
     if daily:
         tail = daily[-days:]
         shift = base - sum(tail) / len(tail)  # centre the real pattern on this person's baseline

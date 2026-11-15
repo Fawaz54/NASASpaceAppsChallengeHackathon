@@ -1,57 +1,80 @@
 {
   "_note": "Plain-language text shown for each reading. 'source' names where the facts come from; full references and links are in docs/sources.md.",
-
   "dose_rate": {
-    "label": "Radiation dose rate", "area": "radiation",
+    "label": "Radiation dose rate",
+    "area": "radiation",
     "what": "How much radiation your body is absorbing per day.",
     "space": "Outside Earth's magnetic field, crews are exposed to cosmic rays all the time and to sudden bursts of particles during solar storms. Curiosity measured about 0.67 mSv a day on the surface of Mars and 1.8 mSv a day on the way there. NASA limits a whole career to less than 600 mSv.",
     "how": "Read automatically from the cabin dosimeter.",
     "source": "Hassler et al., Science, 2014; NASA-STD-3001 Technical Brief OCHMO-TB-020"
   },
   "heart_rate": {
-    "label": "Resting heart rate", "area": "heart",
+    "label": "Heart rate",
+    "area": "heart",
     "what": "How many times your heart beats per minute while you are at rest.",
     "space": "In weightlessness, body fluid shifts toward the head, which changes blood volume, flow and pressure and gradually alters the heart and blood vessels. A resting rate that keeps rising is worth watching.",
     "how": "Read from your wrist sensor while you are still.",
     "source": "NASA Human Research Roadmap, Risk of Cardiovascular Adaptations"
   },
   "systolic_bp": {
-    "label": "Blood pressure", "area": "heart",
+    "label": "Blood pressure",
+    "area": "heart",
     "what": "The pressure in your arteries each time your heart beats (the upper number).",
     "space": "The same fluid shift and blood vessel changes that affect the heart can move blood pressure up or down.",
     "how": "Use the arm cuff after sitting still for five minutes, then enter the upper number.",
     "source": "NASA Human Research Roadmap, Risk of Cardiovascular Adaptations; American Heart Association blood pressure categories"
   },
+  "spo2": {
+    "label": "Blood oxygen",
+    "area": "lungs",
+    "what": "How much oxygen your blood is carrying, as a percentage. Healthy values are usually 95% or higher.",
+    "space": "The cabin air is made and cleaned by machines. A falling oxygen level can be the first sign of a problem with the air, or with your lungs or circulation.",
+    "how": "Clip the pulse oximeter on a finger and hold still for 30 seconds.",
+    "source": "Range chosen by the team; not yet sourced"
+  },
   "body_temp": {
-    "label": "Body temperature", "area": "general",
+    "label": "Body temperature",
+    "area": "general",
     "what": "Your core temperature. A fever, 38.0 °C or higher, usually means your body is fighting an infection.",
     "space": "Spaceflight weakens parts of the immune system: more than half of the astronauts studied shed dormant viruses that had reactivated in flight. In a closed cabin an infection can also spread to the whole crew.",
     "how": "Use the thermometer from the medical kit and enter the reading.",
     "source": "Rooney et al., Frontiers in Microbiology, 2019; CDC fever definition"
   },
   "blood_sugar": {
-    "label": "Blood sugar", "area": "general",
+    "label": "Blood sugar",
+    "area": "general",
     "what": "The amount of glucose in your blood, your body's main fuel. Below 70 mg/dL is low and should be treated.",
     "space": "Bed-rest studies and small spaceflight studies suggest the body can respond less well to insulin in space, although the results are mixed. Diet, stress and reduced activity also affect it.",
     "how": "Use the finger-prick meter from the medical kit and enter the reading in mg/dL.",
     "source": "American Diabetes Association hypoglycemia levels; journal reviews (no NASA report found)"
   },
+  "fluid_l": {
+    "label": "Water today",
+    "area": "general",
+    "what": "How much you have had to drink today, in litres.",
+    "space": "In weightlessness body fluid shifts toward the head and thirst is a poor guide, so crews drink to a plan. Drinking too little raises the risk of dehydration and kidney stones.",
+    "how": "Enter it in the daily check-in.",
+    "source": "Guide value chosen by the team; not yet sourced"
+  },
   "sleep_hours": {
-    "label": "Sleep", "area": "mind",
+    "label": "Sleep",
+    "area": "mind",
     "what": "How many hours you slept last night.",
     "space": "NASA schedules 8.5 hours of sleep a night, but station crews in a ten-year study averaged only about 6 hours. Short sleep affects mood, attention and safety.",
     "how": "Read from your wrist sensor, or enter it in the daily check-in.",
     "source": "Barger et al., Lancet Neurology, 2014"
   },
   "mood": {
-    "label": "Mood", "area": "mind",
+    "label": "Mood",
+    "area": "mind",
     "what": "Your own rating of how you feel today, from 1 (very low) to 5 (very good).",
     "space": "Isolation, confinement and distance from Earth can change mood, motivation and attention, and the risk grows with mission length. A slow slide over days matters more than one bad day.",
     "how": "Rate it in the daily check-in.",
     "source": "NASA Evidence Report, Risk of Adverse Cognitive or Behavioral Changes (2025)"
   },
   "exercise_pct": {
-    "label": "Exercise completed", "area": "bone",
+    "label": "Exercise completed",
+    "area": "bone",
     "what": "How much of your prescribed exercise plan you have completed this week.",
     "space": "Without the load of gravity, bones lose about 1 to 1.5% of their mineral every month. Station crews exercise an average of two hours a day to slow this down.",
     "how": "Logged automatically by the exercise equipment.",

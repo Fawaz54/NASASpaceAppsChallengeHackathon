@@ -1,8 +1,13 @@
-"""Turns readings into a status per health area and picks the checklist.
+"""Turns readings into a status per reading and per body area, and picks the checklist.
 
 Limits come from data/thresholds.json, checklists from data/protocols.json
 and the plain-language text from data/indicators.json, so they can be
 edited without touching this file. The AI never makes these decisions.
+
+"Quiet" readings (mood and exercise) are never shown to the crew member in
+amber or red and never raise an alert, because colouring a self-rating adds
+pressure and invites people to under-report. Their real status still goes
+to the flight surgeon as report_status.
 """
 from statistics import mean
 
@@ -11,12 +16,13 @@ from simulator import simulator
 
 AREAS = [  # in order of urgency
     ("radiation", "Radiation"),
+    ("lungs", "Breathing"),
     ("heart", "Heart"),
-    ("general", "General health"),
-    ("mind", "Mind and sleep"),
+    ("general", "Body"),
+    ("mind", "Sleep and mind"),
     ("bone", "Bone and muscle"),
 ]
-RANK = {"ok": 0, "watch": 1, "act": 2}
+RANK = {"neutral": 0, "ok": 0, "watch": 1, "act": 2}
 DRIFT_FRACTION = 0.08  # a move of 8% from the personal baseline counts as drift
 
 
@@ -85,10 +91,16 @@ def _drift(metric, resolved):
 
 
 def evaluate(readings):
-    """Returns (areas, alert, all_green)."""
+    """Returns (metrics, areas, alert).
+
+    metrics: one entry per reading, with the status shown to the crew
+             ("neutral" for quiet readings) and report_status for the doctor.
+    areas:   {area id: {"label", "status", "report_status"}} for the body figure.
+    alert:   the most urgent checklist, or None.
+    """
     thresholds = _data("thresholds.json")
     info = indicators()
-    by_area = {area_id: [] for area_id, _ in AREAS}
+    metrics = []
 
     for reading in readings:
         metric = reading["metric"]
@@ -106,29 +118,26 @@ def evaluate(readings):
                 note = f"{label} {'up' if change > 0 else 'down'} {abs(change) * 100:.0f}% from your usual level this week"
                 if status == "ok":
                     status, side = "watch", drift_side
-        by_area[threshold["area"]].append({
-            "metric": metric,
-            "label": label,
-            "value": reading["value"],
-            "unit": reading["unit"],
-            "source": reading["source"],
-            "status": status,
-            "note": note,
-            "protocol": resolved.get(side, {}).get("protocol") if side else None,
+        quiet = bool(threshold.get("quiet"))
+        metrics.append({
+            "metric": metric, "label": label, "area": threshold["area"],
+            "value": reading["value"], "unit": reading["unit"], "source": reading["source"],
+            "quiet": quiet, "status": "neutral" if quiet else status, "report_status": status, "note": note,
+            "protocol": resolved.get(side, {}).get("protocol") if side and not quiet else None,
         })
 
-    areas, alert = [], None
+    areas, alert = {}, None
     for area_id, label in AREAS:
-        metrics = by_area[area_id]
-        worst = max(metrics, key=lambda m: RANK[m["status"]], default=None)
-        status = worst["status"] if worst else "ok"
-        areas.append({
-            "id": area_id, "label": label, "status": status, "metrics": metrics,
-            "note": "; ".join(m["note"] for m in metrics if m["note"]),
-        })
-        if alert is None and status == "act" and worst["protocol"]:
+        mine = [m for m in metrics if m["area"] == area_id]
+        shown = [m for m in mine if not m["quiet"]]
+        worst = max(shown, key=lambda m: RANK[m["status"]], default=None)
+        areas[area_id] = {
+            "label": label,
+            "status": worst["status"] if worst else "neutral",
+            "report_status": max((m["report_status"] for m in mine), key=RANK.get, default="ok"),
+        }
+        if alert is None and worst and worst["status"] == "act" and worst["protocol"]:
             protocol = protocols().get(worst["protocol"])
             if protocol:
                 alert = {"area": area_id, "metric": worst["metric"], "protocol_id": worst["protocol"], **protocol}
-
-    return areas, alert, all(a["status"] == "ok" for a in areas)
+    return metrics, areas, alert
