@@ -19,8 +19,10 @@ when the header does not name an astronaut account.
 | GET | `/api/history?metric=heart_rate` | `{metric, label, unit, baseline, band: [low, high], values: [30 daily values], crew_average}` |
 | GET | `/api/assessments` | The daily check-in: `{assessments, done, sent, defaults, regions}` |
 | POST | `/api/assessment` | `{id, data}` saves one assessment. When all are done the daily report is sent; returns `{saved, done, report_sent, all_clear}` |
+| POST | `/api/feeling-better` | The crew member says they feel better during an alert; tells the flight surgeon |
 | POST | `/api/nudge` | `{id: "mood"}` asks the flight surgeon for a private call |
 | POST | `/api/steps` | `{protocol_id, done: [step numbers]}` remembers ticked checklist steps |
+| POST | `/api/speech` | Body is a 16 kHz mono WAV recording; returns `{text}` or `{error}`. `state.speech.available` says whether it is set up |
 | POST | `/api/ask` | `{question}` returns `{answer, based_on, used_ai}` |
 | GET | `/api/triage` | Emergency questions: `{types, regions, onsets, signs}` |
 | POST | `/api/emergency/start` | Alerts crew and Earth; returns the emergency |
@@ -74,14 +76,15 @@ quiet readings. `report_status` is the real status sent to the flight surgeon.
   "vitals": ["seven readings, in tile order"],
   "areas": {"heart": {"label": "Heart", "status": "ok", "report_status": "ok"}},
   "radiation": {"value": 0.69, "status": "ok", "mission_total": 111.9, "career_limit": 600, "percent_of_limit": 18.6},
-  "exercise": {"value": 92, "streak_days": 12},
+  "exercise": {"value": 90, "today": {"cardio": 40, "resistance": 50}, "today_total": 90, "today_percent": 75, "target_minutes": 120, "streak_days": 13},
   "mood": {"value": 4, "week": [4, 4, 4, 4, 4, 4, 4]},
   "alert": null,
   "nudges": [{"id": "mood", "text": "...", "action": "Request a private call with the flight surgeon", "requested": false}],
   "all_green": true,
   "ticks": [], "emergency": null, "nasa_event": null,
   "messages": ["Earth link, newest first"],
-  "checkin": {"done": ["vitals", "mind"], "total": 5, "sent": false},
+  "checkin": {"done": ["vitals", "mind"], "total": 6, "sent": false},
+  "felt_better": false,
   "pain": [{"region": "Lower back", "severity": 6}],
   "ai": {"available": true, "model": "llama3.2:latest"}
 }

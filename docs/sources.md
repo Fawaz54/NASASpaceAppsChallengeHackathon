@@ -18,6 +18,21 @@ Researched 14 November 2026.
 | [NASA DONKI](https://ccmc.gsfc.nasa.gov/DONKI/api/) (CCMC, Goddard) | The radiation scenario names a real solar particle event. Its timing is real; dose values are simulated. | `2026-09-05T16:18:00-SEP-001`, measured by SOHO COSTEP. See `data/donki_event.json` | Page |
 | Curiosity RAD (Mars Science Laboratory) | Background radiation on Mars and in transit | Via the published results below | Page |
 
+## 3D body on the home screen
+
+| Part | Source | Licence |
+|---|---|---|
+| Body surface | MakeHuman base mesh, turned into a point cloud by `tools/build_body.py` | CC0 (public domain) |
+| Organs, bones and radiation halo | Generated from simple shapes by the same script | Made by the team |
+| 3D drawing library | three.js, `frontend/js/vendor/three.module.min.js` | MIT (`three.LICENSE.txt`) |
+| Figure code | `frontend/js/organs.js` and `frontend/js/cursor.js`, written by a teammate with AI assistance | Team |
+
+The organs are placed for illustration and are not anatomically exact.
+
+## Speech to text
+
+whisper.cpp (MIT licence), running OpenAI's Whisper `base.en` model (MIT licence), entirely on the laptop.
+
 ## Simulated crew dataset
 
 `data/crew_dataset.json` is a crew of 100 astronauts made by the team from

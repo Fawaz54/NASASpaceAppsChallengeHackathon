@@ -36,6 +36,7 @@ PROFILE_FIELDS = {
     "resting_hr": None, "systolic_bp": None, "sleep_hours": None,
     "conditions": "", "medications": "", "allergies": "",
     "environment": "mars", "mission_name": "", "mission_start": "",
+    "height_unit": "cm", "weight_unit": "kg",   # how the profile form shows them; stored values are metric
 }
 # Sensible ranges; a number outside its range is ignored.
 PROFILE_RANGES = {"age": (18, 80), "height_cm": (100, 230), "weight_kg": (30, 200),

@@ -13,7 +13,7 @@ import cloud
 import comms
 import crew
 import store
-from ai import explain
+from ai import explain, speech
 from nasa_data import donki
 from rules import triage
 from rules.engine import band, evaluate, indicators
@@ -23,6 +23,7 @@ PORT = 8000
 STATUS_WORD = {"ok": "OK", "watch": "WATCH", "act": "ACT", "neutral": "OK"}
 VITALS = ["body_temp", "heart_rate", "systolic_bp", "spo2", "sleep_hours", "fluid_l", "blood_sugar"]
 CAREER_LIMIT_MSV = 600  # NASA-STD-3001 Vol 1 [V1 4030], see docs/sources.md
+EXERCISE_TARGET_MIN = 120  # station crews average two hours a day (NASA), see docs/sources.md
 
 # The daily check-in: several short assessments. The screens are drawn from
 # this list, so adding a question here adds it to the app.
@@ -45,6 +46,11 @@ ASSESSMENTS = [
     ]},
     {"id": "body", "title": "Body and pain", "intro": "Tap where it hurts and set the pain level. Skip the figure if nothing hurts.", "items": [
         {"key": "pain", "type": "bodymap", "label": "Where does it hurt?"},
+    ]},
+    {"id": "exercise", "title": "Exercise", "intro": "What you have done today. The plan is about two hours a day.", "items": [
+        {"key": "cardio_min", "type": "stepper", "label": "Cardio (treadmill or cycle)", "unit": "min", "min": 0, "max": 240, "step": 5, "required": True},
+        {"key": "resistance_min", "type": "stepper", "label": "Resistance (weights machine)", "unit": "min", "min": 0, "max": 240, "step": 5, "required": True},
+        {"key": "blocked", "type": "yesno", "label": "Did pain or an equipment problem stop you from exercising?", "flag": True},
     ]},
     {"id": "intake", "title": "Food and water", "intro": "What you have had so far today.", "items": [
         {"key": "fluid_l", "type": "stepper", "label": "Water and other drinks", "unit": "L", "min": 0, "max": 10, "step": 0.25, "required": True, "metric": True},
@@ -108,6 +114,24 @@ def nudges(metrics):
     return found
 
 
+def exercise_today():
+    """Minutes entered in today's check-in, or None if not entered yet."""
+    entry = todays_assessments().get("exercise")
+    if not entry:
+        return None
+    return {"cardio": entry.get("cardio_min", 0), "resistance": entry.get("resistance_min", 0)}
+
+
+def exercise_stats(reading):
+    today = exercise_today()
+    total = (today["cardio"] + today["resistance"]) if today else 0
+    return {**reading, "today": today, "today_total": total, "target_minutes": EXERCISE_TARGET_MIN,
+            "today_percent": min(100, round(100 * total / EXERCISE_TARGET_MIN)),
+            "streak_days": simulator.exercise_streak() + (1 if total > 0 else 0),
+            "source_note": "Today's minutes are from your check-in." if today
+                           else "Not entered today yet; the weekly figure is from the exercise equipment log."}
+
+
 def build_state():
     metrics, areas, alert = snapshot()
     report_alert(alert, metrics)
@@ -127,18 +151,20 @@ def build_state():
         "areas": areas,
         "radiation": {**dose, "mission_total": total, "career_limit": CAREER_LIMIT_MSV,
                       "percent_of_limit": round(100 * total / CAREER_LIMIT_MSV, 1)},
-        "exercise": {**by_name["exercise_pct"], "streak_days": simulator.exercise_streak()},
+        "exercise": exercise_stats(by_name["exercise_pct"]),
         "mood": {**by_name["mood"], "week": [round(v) for v in simulator.history("mood")[-7:]]},
         "alert": alert,
         "all_green": all(a["status"] in ("ok", "neutral") for a in areas.values()),
         "nudges": nudges(metrics),
         "nasa_event": donki.saved_event() if alert and alert["area"] == "radiation" else None,
         "ticks": store.ticks.get(alert["protocol_id"], []) if alert else [],
+        "felt_better": bool(alert) and store.ticks.get("_better") == alert["protocol_id"],
         "emergency": store.emergency,
         "messages": comms.ship_view(store.current)[:10],
         "checkin": {"done": done, "total": len(ASSESSMENTS), "sent": store.checkin_date == store.today()},
         "pain": (store.assessments.get("body") or {}).get("pain", []),
         "ai": {"available": bool(explain.model()), "model": explain.model()},
+        "speech": {"available": speech.available()},
     }
 
 
@@ -192,6 +218,11 @@ def save_assessment(body):
 
     done = todays_assessments()
     done[definition["id"]] = answers
+    if definition["id"] == "exercise":
+        # This week's figure: six days from the equipment log plus what was entered today.
+        today = min(100, 100 * (answers["cardio_min"] + answers["resistance_min"]) / EXERCISE_TARGET_MIN)
+        store.manual["exercise_pct"] = round((simulator.simulated("exercise_pct") * 6 + today) / 7)
+        store.manual_dates["exercise_pct"] = store.today()
     result = {"saved": True, "done": list(done), "report_sent": False}
     if len(done) == len(ASSESSMENTS) and store.checkin_date != store.today():
         result["all_clear"] = send_daily_report()
@@ -211,7 +242,9 @@ def send_daily_report():
              *metric_lines(metrics), "",
              "Pain: " + (", ".join(f"{p['region']} {p['severity']}/10" for p in pain) or "none reported"),
              "Answered yes: " + ("; ".join(concerns) if concerns else "nothing"),
-             f"Meals eaten today: {done.get('intake', {}).get('meals', 'not given')}", "",
+             f"Meals eaten today: {done.get('intake', {}).get('meals', 'not given')}",
+             f"Exercise today: {done.get('exercise', {}).get('cardio_min', 0)} min cardio, "
+             f"{done.get('exercise', {}).get('resistance_min', 0)} min resistance", "",
              "Result: all indicators in range." if all_clear else "Result: needs flight surgeon review."]
     comms.send("ship", "daily_report", f"{store.today()}_{store.current}_dailyreport", "\n".join(lines), all_green=all_clear)
     store.checkin = dict(done)
@@ -221,7 +254,8 @@ def send_daily_report():
 
 def assessments(_query):
     return {"assessments": ASSESSMENTS, "done": todays_assessments(), "sent": store.checkin_date == store.today(),
-            "defaults": {"sleep_hours": (store.profile or {}).get("sleep_hours") or 7, "fluid_l": 2},
+            "defaults": {"sleep_hours": (store.profile or {}).get("sleep_hours") or 7, "fluid_l": 2,
+                         "cardio_min": 30, "resistance_min": 60},
             "regions": triage.REGIONS}
 
 
@@ -230,6 +264,17 @@ def nudge(body):
         store.ticks["_call"] = store.today()
         comms.send("ship", "update", "Private call requested",
                    f"{who()} would like a private call with the flight surgeon.")
+    return {"sent": True}
+
+
+def feeling_better(_body):
+    """The crew member says they feel better while an alert is showing."""
+    _, _, alert = snapshot()
+    if alert and store.ticks.get("_better") != alert["protocol_id"]:
+        store.ticks["_better"] = alert["protocol_id"]
+        comms.send("ship", "update", "Crew member feels better",
+                   f"{who()} reports feeling better during alert {alert['protocol_id']} ({alert['title']}). "
+                   "The alert stays on screen until the reading is back in range.")
     return {"sent": True}
 
 
@@ -329,6 +374,11 @@ def history(query):
             "crew_average": crew.averages().get(metric)}
 
 
+def transcribe(audio):
+    text, problem = speech.transcribe(audio)
+    return {"error": problem} if problem else {"text": text}
+
+
 # ---------- demo controls ----------
 
 def set_scenario(body):
@@ -387,6 +437,7 @@ POST = {
     "/api/scenario": set_scenario,
     "/api/assessment": save_assessment,
     "/api/nudge": nudge,
+    "/api/feeling-better": feeling_better,
     "/api/steps": save_ticks,
     "/api/ask": ask,
     "/api/emergency/start": start_emergency,
@@ -397,7 +448,8 @@ POST = {
     "/api/reset": reset,
 }
 # These need a signed-in astronaut.
-CREW_ONLY = {"/api/state", "/api/assessments", "/api/history", "/api/assessment", "/api/nudge", "/api/steps",
+CREW_ONLY = {"/api/state", "/api/speech", "/api/assessments", "/api/history", "/api/assessment", "/api/nudge", "/api/steps",
+             "/api/feeling-better",
              "/api/ask", "/api/emergency/start", "/api/emergency/describe", "/api/emergency/answer",
              "/api/emergency/resolve"}
 
@@ -442,6 +494,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urlsplit(self.path).path
+        if path == "/api/speech":   # the body is a WAV recording, not JSON
+            length = int(self.headers.get("Content-Length", 0))
+            if length > speech.MAX_BYTES:
+                return self._send_json({"error": "The recording is too long. Try a shorter one."})
+            audio = self.rfile.read(length)
+            return self._send_json(self._run(path, transcribe, audio))
         if path not in POST:
             return self._send_json({"error": "not found"})
         try:

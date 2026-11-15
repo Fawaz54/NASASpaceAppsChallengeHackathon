@@ -2,8 +2,9 @@
 // then asks a fixed set of questions and shows the steps to take.
 // The follow-up questions depend on what happened; the danger signs are always asked.
 import { get, post } from "./api.js";
-import { h, topbar, speakButton, speak, messageNode, requireUser } from "./common.js";
+import { h, topbar, speakButton, messageNode, requireUser } from "./common.js";
 import { createBodyMap } from "./bodymap.js";
+import { micButton } from "./speech.js";
 
 await requireUser("astronaut");
 topbar("emergency.html");
@@ -117,7 +118,10 @@ function questions(emergency) {
   app.replaceChildren(
     h("h1", {}, "Tell us what is wrong"),
     statusCard(emergency),
-    h("section", { class: "card" }, h("label", { for: "description" }, "In your own words"), description, aiNote, describeButton),
+    h("section", { class: "card" }, h("label", { for: "description" }, "In your own words"), description,
+      micButton({ available: state.speech.available, label: "Speak instead of typing",
+        onText: (text) => { description.value = `${description.value} ${text}`.trim(); describeButton.click(); } }),
+      aiNote, describeButton),
     h("section", { class: "card" }, h("h2", {}, "1. What happened?"), h("div", { class: "row" }, typeButtons), followUps),
     h("section", { class: "card" }, h("h2", {}, "2. Where is it?"), h("div", { class: "grid-2", style: "margin:0" }, figureBox, picked)),
     h("section", { class: "card" }, h("h2", {}, "3. What is your pain level?"),
@@ -146,11 +150,10 @@ function steps(emergency) {
       h("div", { class: "muted" }, `Protocol ${protocol.protocol_id} · chosen from your answers`),
       h("ul", { class: "steps" }, protocol.steps.map((step) =>
         h("li", {}, h("label", {}, h("input", { type: "checkbox" }), h("span", {}, step))))),
-      h("div", { class: "row" }, speakButton(() => spoken, "Read steps aloud"), h("a", { class: "button", href: "ask.html" }, "Ask a question"))),
+      h("div", { class: "row" }, speakButton(() => spoken, "Read steps aloud", { autoplay: true }), h("a", { class: "button", href: "ask.html" }, "Ask a question"))),
     statusCard(emergency),
     h("section", { class: "card" }, h("h2", {}, "Earth link"), repliesBox),
   );
-  speak(spoken);
   showReplies();
 }
 

@@ -92,8 +92,9 @@ export function simpleBar(title) {
 }
 
 // Reads text aloud with a voice installed on this device, so it works offline.
+// Returns the utterance (or null if this browser cannot speak).
 export function speak(text) {
-  if (!("speechSynthesis" in window)) return;
+  if (!("speechSynthesis" in window)) return null;
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   const voices = speechSynthesis.getVoices();
@@ -101,10 +102,36 @@ export function speak(text) {
   if (local) utterance.voice = local;
   utterance.rate = 0.95;
   speechSynthesis.speak(utterance);
+  return utterance;
 }
 
-export function speakButton(getText, label = "Read aloud") {
-  return h("button", { onclick: () => speak(getText()) }, label);
+// Leaving a screen stops any reading that is still going.
+window.addEventListener("pagehide", () => stopSpeaking());
+
+export function stopSpeaking() {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+}
+
+// A button that reads text aloud and turns into "Stop reading" while it speaks.
+// autoplay starts reading straight away (used for emergency steps).
+export function speakButton(getText, label = "Read aloud", { autoplay = false } = {}) {
+  const button = h("button", {});
+  const idle = () => { button.textContent = label; button.classList.remove("selected"); };
+  const speaking = () => { button.textContent = "Stop reading"; button.classList.add("selected"); };
+  const start = () => {
+    const utterance = speak(getText());
+    if (!utterance) return;
+    speaking();
+    utterance.onend = idle;
+    utterance.onerror = idle;
+  };
+  button.addEventListener("click", () => {
+    if (button.classList.contains("selected")) { stopSpeaking(); idle(); } else start();
+  });
+  idle();
+  if (autoplay) start();
+  else if ("speechSynthesis" in window && speechSynthesis.speaking) speaking();
+  return button;
 }
 
 // A short tone when something needs attention. Browsers block sound until

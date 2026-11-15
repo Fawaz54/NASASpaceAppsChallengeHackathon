@@ -2,6 +2,7 @@
 // It only explains what the rules decided; it never chooses what to do.
 import { get, post } from "./api.js";
 import { h, topbar, speakButton, requireUser } from "./common.js";
+import { micButton } from "./speech.js";
 
 await requireUser("astronaut");
 topbar("ask.html");
@@ -47,6 +48,8 @@ app.append(
     h("label", { for: "question" }, "Your question"),
     h("form", { class: "row", onsubmit: (event) => { event.preventDefault(); ask(input.value); } },
       h("div", { style: "flex:1;min-width:220px" }, input), h("button", { class: "primary", type: "submit" }, "Ask")),
+    micButton({ available: state.speech.available, label: "Ask out loud",
+      onText: (text) => { input.value = text; ask(text); } }),
     error),
   answerBox,
 );

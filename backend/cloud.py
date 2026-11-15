@@ -44,7 +44,7 @@ def _slug(text):
 
 def file_name(message):
     """For example: fawaz/2026-11-14_fawaz_daily_report_0007.json"""
-    day = datetime.fromtimestamp(message["sent_at"], timezone.utc).strftime("%Y-%m-%d")
+    day = datetime.fromtimestamp(message["sent_at"]).strftime("%Y-%m-%d")   # local date, to match report titles
     crew = _slug(message["crew"])
     kind = "dailyreport" if message["kind"] == "daily_report" else message["kind"]
     return f"{crew}/{day}_{crew}_{kind}_{message['id']:04d}.json"

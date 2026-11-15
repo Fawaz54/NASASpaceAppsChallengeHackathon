@@ -17,7 +17,7 @@ the home screen before you start.
 3. **Radiation for a long stay.** Point to the Mission card: today's dose
    and the mission total against NASA's 600 mSv career limit. It is always
    there, separate from the vitals.
-4. **Daily check-in.** Do the five short assessments. Each greys out when
+4. **Daily check-in.** Do the six short assessments. Each greys out when
    done. After the last one the report `date_username_dailyreport` is sent.
    On the doctor's tab it arrives after the delay; write feedback, and the
    astronaut sees the report change from Delivered to Reviewed.

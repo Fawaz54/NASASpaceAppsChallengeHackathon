@@ -18,7 +18,7 @@ const TEXT = {
   mission_name: ["Mission name", "Ares 3"],
 };
 const NUMBERS = {
-  age: ["Age", "years", "34"], height_cm: ["Height", "cm", "172"], weight_kg: ["Weight", "kg", "68"],
+  age: ["Age", "years", "34"],
   resting_hr: ["Resting heart rate", "bpm", "62"], systolic_bp: ["Blood pressure, upper number", "mmHg", "118"],
   sleep_hours: ["Usual sleep per night", "hours", "7.5"],
 };
@@ -37,6 +37,75 @@ function number(key) {
   fields[key] = field;
   return field.node;
 }
+
+// Height and weight can be typed in metric or US units. They are always saved
+// in centimetres and kilograms, so the rest of the app has one unit to deal with.
+const CM_PER_FOOT = 30.48, CM_PER_INCH = 2.54, KG_PER_POUND = 0.45359237;
+const round1 = (value) => Math.round(value * 10) / 10;
+
+function unitField({ key, label, units, toMetric, fromMetric, unitKey }) {
+  const [low, high] = ranges[key];
+  const choice = h("select", { id: `${key}-unit`, "aria-label": `${label} unit`, style: "width:auto" },
+    units.map(([value, text]) => h("option", { value }, text)));
+  choice.value = profile?.[unitKey] || units[0][0];
+  const boxes = h("div", { class: "row", style: "flex-wrap:nowrap" });
+  const error = h("div", { class: "error" });
+  let inputs = [];
+  let metric = profile?.[key] ?? null;   // the saved value, used to refill the boxes when the unit changes
+
+  function draw() {
+    const parts = fromMetric(choice.value, metric);   // [[hint, value], ...]
+    inputs = parts.map(([hint, value], index) => {
+      const input = h("input", { id: index === 0 ? key : `${key}-${index}`, type: "number", step: "any", inputmode: "decimal",
+        min: "0", placeholder: hint, "aria-label": `${label} ${hint}` });
+      if (value !== null) input.value = value;
+      input.addEventListener("input", () => { error.textContent = ""; });
+      return input;
+    });
+    boxes.replaceChildren(...inputs, choice);
+  }
+  function read() {
+    if (inputs.every((input) => input.value === "")) return null;
+    const numbers = inputs.map((input) => (input.value === "" ? 0 : Number(input.value)));
+    const value = toMetric(choice.value, numbers);
+    if (numbers.some((n) => !Number.isFinite(n) || n < 0) || value < low || value > high) {
+      const limits = [low, high].map((limit) => fromMetric(choice.value, limit).map(([hint, v]) => `${v} ${hint}`).join(" "));
+      error.textContent = `Enter a ${label.toLowerCase()} between ${limits[0]} and ${limits[1]}.`;
+      inputs[0].focus();
+      return undefined;
+    }
+    return round1(value);
+  }
+  choice.addEventListener("change", () => {
+    // Keep whatever was typed, converted to the new unit.
+    const typed = inputs.some((input) => input.value !== "") ? inputs.map((input) => Number(input.value) || 0) : null;
+    const previous = choice.dataset.previous || units[0][0];
+    if (typed) metric = toMetric(previous, typed);
+    choice.dataset.previous = choice.value;
+    draw();
+  });
+  choice.dataset.previous = choice.value;
+  draw();
+  fields[key] = { read, input: { set value(v) { metric = v; draw(); } } };
+  fields[unitKey] = { read: () => choice.value };
+  return h("div", {}, h("label", { for: key }, label), boxes, error);
+}
+
+const heightField = () => unitField({
+  key: "height_cm", unitKey: "height_unit", label: "Height", units: [["cm", "cm"], ["ft", "ft and in"]],
+  toMetric: (unit, [a, b = 0]) => (unit === "cm" ? a : a * CM_PER_FOOT + b * CM_PER_INCH),
+  fromMetric: (unit, cm) => {
+    if (unit === "cm") return [["cm", cm === null ? null : Math.round(cm)]];
+    if (cm === null) return [["ft", null], ["in", null]];
+    const inches = Math.round(cm / CM_PER_INCH);
+    return [["ft", Math.floor(inches / 12)], ["in", inches % 12]];
+  },
+});
+const weightField = () => unitField({
+  key: "weight_kg", unitKey: "weight_unit", label: "Weight", units: [["kg", "kg"], ["lb", "lb"]],
+  toMetric: (unit, [a]) => (unit === "kg" ? a : a * KG_PER_POUND),
+  fromMetric: (unit, kg) => [[unit, kg === null ? null : (unit === "kg" ? round1(kg) : Math.round(kg / KG_PER_POUND))]],
+});
 
 const fullName = h("input", { id: "name", type: "text", placeholder: "Your full name" });
 if (profile?.name) fullName.value = profile.name;
@@ -89,7 +158,7 @@ document.getElementById("app").append(
         creating ? h("div", {}, h("label", { for: "username" }, "Username"), username) : null,
         textField("role"), number("age"),
         h("div", {}, h("label", { for: "sex" }, "Sex"), sex),
-        number("height_cm"), number("weight_kg"))),
+        heightField(), weightField())),
     h("section", { class: "card" },
       h("div", { class: "row between" }, h("h2", {}, "Your pre-flight baseline"), watchButton),
       h("p", { class: "muted" }, "Leave a box empty to use a typical value."),

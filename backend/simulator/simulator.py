@@ -85,6 +85,12 @@ def _target(metric):
     return amount if kind == "abs" else baseline(metric) * amount
 
 
+def simulated(metric):
+    """What the sensors alone would say, ignoring values the crew member entered."""
+    target = _target(metric)
+    return baseline(metric) if target is None else target
+
+
 def _steady_value(metric):
     """Today's value without the random wobble."""
     if metric in store.manual:

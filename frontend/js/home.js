@@ -1,6 +1,6 @@
 // Home screen: "am I okay, and if not, what do I do?"
 import { get, post } from "./api.js";
-import { h, badge, topbar, speakButton, beep, messageNode, callForHelp, requireUser, MARK, STATUS } from "./common.js";
+import { h, svg, badge, topbar, speakButton, beep, messageNode, callForHelp, requireUser, MARK, STATUS } from "./common.js";
 import { createOrganFigure } from "./organs.js";
 import { drawChart } from "./chart.js";
 
@@ -12,7 +12,7 @@ const strip = h("div", { class: "row between", style: "margin-bottom:14px" });
 const emergencyBox = h("section", { class: "card banner", hidden: true });
 const alertBox = h("section", { class: "card banner", hidden: true });
 const nudgeBox = h("div");
-const figureBox = h("div");
+const figureBox = h("div", { class: "figure-box" });
 const tiles = h("div", { class: "tiles" });
 const missionBox = h("div");
 const detail = h("section", { class: "card", hidden: true });
@@ -22,16 +22,16 @@ const demoBox = h("div", { class: "row", style: "margin-top:8px" });
 
 app.append(
   strip, emergencyBox, alertBox, nudgeBox,
-  h("div", { class: "grid-2" },
-    h("section", { class: "card" },
+  h("div", { class: "home-grid" },
+    h("section", { class: "card figure-card" },
       h("h2", {}, "Your body"),
-      h("p", { class: "muted" }, "Tap an organ, or the dashed outline for radiation."),
       figureBox,
-      h("div", { class: "legend" },
-        h("span", {}, h("i", { style: "background:var(--ok-bg);border-color:var(--ok)" }), "Normal"),
-        h("span", {}, h("i", { style: "background:var(--watch-bg);border-color:var(--watch)" }), "Monitor"),
-        h("span", {}, h("i", { style: "background:var(--act-bg);border-color:var(--act)" }), "Act now"),
-        h("span", {}, h("i", { style: "background:var(--neutral-bg);border-color:var(--muted)" }), "Tracked, not rated"))),
+      h("div", { class: "legend", "aria-label": "What the colours of the organs mean" },
+        h("span", {}, h("i", { style: "background:var(--pt-ok);border-color:var(--pt-ok)" }), "Normal"),
+        h("span", {}, h("i", { style: "background:var(--pt-watch);border-color:var(--pt-watch)" }), "Monitor"),
+        h("span", {}, h("i", { style: "background:var(--pt-act);border-color:var(--pt-act)" }), "Act now"),
+        h("span", {}, h("i", { style: "background:var(--pt-neutral);border-color:var(--pt-neutral)" }), "Tracked, not rated"),
+        h("span", {}, "The loose halo is radiation"))),
     h("div", {},
       h("section", { class: "card" }, h("h2", {}, "Vitals"), tiles),
       h("section", { class: "card", style: "margin-bottom:0" }, h("h2", {}, "Mission"), missionBox))),
@@ -41,7 +41,7 @@ app.append(
     h("div", { class: "muted" }, "Demo controls (not part of the crew member's screen)"), demoBox),
 );
 
-const figure = createOrganFigure(figureBox, { onSelect: (area) => select({ area }) });
+const figure = createOrganFigure(figureBox, { onSelect: (area) => select(area ? { area } : null) });
 
 let state = null;
 let indicators = {};
@@ -89,7 +89,7 @@ function renderEmergency() {
 function renderAlert() {
   const alert = state.alert;
   alertBox.hidden = !alert;
-  const signature = alert ? `${alert.protocol_id}:${state.ticks.join(",")}` : null;
+  const signature = alert ? `${alert.protocol_id}:${state.ticks.join(",")}:${state.felt_better}` : null;
   if (alert && !shownAlert?.startsWith(alert.protocol_id)) beep();
   if (signature === shownAlert) return;
   shownAlert = signature;
@@ -116,7 +116,10 @@ function renderAlert() {
     h("div", { class: "row" },
       speakButton(() => `${alert.title}. ${alert.steps.map((s, i) => `Step ${i + 1}. ${s}`).join(". ")}`, "Read steps aloud"),
       h("a", { class: "button", href: "ask.html" }, "Ask why"),
-      h("button", { class: "help", onclick: callForHelp }, "I feel worse")));
+      state.felt_better ? null : h("button", { onclick: async () => { await post("/api/feeling-better"); refresh(); } }, "I feel better"),
+      h("button", { class: "help", onclick: callForHelp }, "I feel worse")),
+    state.felt_better ? h("p", { class: "muted", style: "margin:10px 0 0" },
+      "Good to hear. The flight surgeon has been told you feel better. This alert stays until the reading is back in range.") : null);
 }
 
 // Gentle, private prompts for mood and exercise. Never red, never an alarm.
@@ -132,6 +135,7 @@ function renderFigure() {
   const statuses = Object.fromEntries(Object.entries(state.areas).map(([id, area]) => [id, area.status]));
   figure.paint(statuses, selected?.area);
   figure.markPain(state.pain.map((p) => p.region));
+  figure.setHeartRate(state.vitals.find((v) => v.metric === "heart_rate")?.value);   // the 3D heart beats at this rate
 }
 
 function renderTiles() {
@@ -141,6 +145,20 @@ function renderTiles() {
       h("span", { class: "mark", "aria-hidden": "true" }, MARK[v.status]),
       h("div", { class: "name" }, v.label),
       h("div", { class: "number" }, String(v.value), h("span", { class: "unit" }, v.unit)))));
+}
+
+// A progress ring: how far round the circle is filled, with a figure in the middle.
+function ring(percent, figure, caption) {
+  const radius = 30, length = 2 * Math.PI * radius;
+  const centre = svg("text", { x: 38, y: 43, "text-anchor": "middle", class: "ring-figure" });
+  centre.textContent = figure;
+  return h("div", { class: "ring" },
+    svg("svg", { viewBox: "0 0 76 76", role: "img", "aria-label": `${caption}: ${figure}` },
+      svg("circle", { cx: 38, cy: 38, r: radius, class: "ring-track" }),
+      svg("circle", { cx: 38, cy: 38, r: radius, class: "ring-fill", transform: "rotate(-90 38 38)",
+        "stroke-dasharray": `${(Math.min(100, percent) / 100) * length} ${length}` }),
+      centre),
+    h("div", { class: "muted small" }, caption));
 }
 
 function renderMission() {
@@ -154,13 +172,19 @@ function renderMission() {
       h("div", {}, h("span", { class: "figure" }, `${r.value} `), h("span", { class: "muted" }, "mSv today")),
       h("div", { class: "bar", role: "img", "aria-label": `${r.percent_of_limit}% of the career limit` }, h("span", { style: `width:${Math.min(100, r.percent_of_limit)}%` })),
       h("div", { class: "muted small" }, `Mission total about ${r.mission_total} mSv, ${r.percent_of_limit}% of NASA's ${r.career_limit} mSv career limit`)),
-    // Exercise: progress toward the plan, never red.
+    // Exercise: rings for progress toward the plan. Never red.
     h("div", { class: "stat" },
       h("div", { class: "row between" },
-        h("button", { class: "plain", style: "padding:0;min-height:0;border:0", onclick: () => select({ metric: "exercise_pct" }) }, h("strong", {}, "Exercise this week")),
+        h("button", { class: "plain", style: "padding:0;min-height:0;border:0", onclick: () => select({ metric: "exercise_pct" }) }, h("strong", {}, "Exercise")),
         h("span", { class: "muted small" }, e.streak_days ? `${e.streak_days}-day streak` : "Start a new streak today")),
-      h("div", { class: "bar", role: "img", "aria-label": `${e.value}% of the weekly plan` }, h("span", { style: `width:${Math.min(100, e.value)}%` })),
-      h("div", { class: "muted small" }, `${e.value}% of your plan done`)),
+      h("div", { class: "rings" },
+        ring(e.value, `${e.value}%`, "of this week's plan"),
+        ring(e.today_percent, `${e.today_total}`, `of ${e.target_minutes} min today`),
+        h("div", { class: "small" },
+          h("div", {}, h("strong", {}, e.today ? `${e.today.cardio} min` : "–"), " cardio"),
+          h("div", {}, h("strong", {}, e.today ? `${e.today.resistance} min` : "–"), " resistance"),
+          e.today ? null : h("a", { href: "checkin.html" }, "Log today's exercise"))),
+      h("div", { class: "muted small" }, e.source_note)),
     // Mood: shown without colour, so it never adds pressure.
     h("div", { class: "stat" },
       h("div", { class: "row between" },
