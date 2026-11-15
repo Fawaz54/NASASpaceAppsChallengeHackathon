@@ -12,37 +12,31 @@ are drafts, not medical advice (see [docs/sources.md](docs/sources.md)).
 ```bash
 python3 backend/main.py
 ```
+for windows:
+```bash
+py backend/main.py
+```
 
-Then open http://localhost:8000. Create an astronaut account or a flight
-surgeon account (username only, no passwords) and sign in. Each browser tab
-keeps its own sign-in, so one tab can be the crew and another the doctor.
+Then open http://localhost:8000. 
+
+Create an astronaut account or a flight
+surgeon account (username only, no passwords) and sign in. This is a dummy account to separate
+data from other people on the crew. 
 Nothing to install; it uses only the Python standard library and works offline.
 
-Optional extras:
 
-- **Local AI:** install [Ollama](https://ollama.com) and pull one small model.
-  The app uses whichever model is installed and falls back to written
-  explanations when none is running.
-- **Apple Watch baseline:** put a Health export in `private/` and run
-  `python3 backend/simulator/watch_import.py private/export.zip`.
-- **Speaking instead of typing:** offline speech-to-text with Whisper on the
-  emergency and Ask screens. Setup is in [docs/speech.md](docs/speech.md).
-- **Azure archive:** the Earth side can keep every report in Microsoft Azure
-  Blob Storage. Setup is in [docs/azure.md](docs/azure.md).
-- **Real NASA event:** `python3 backend/nasa_data/donki.py` refreshes the saved
-  solar particle event (needs internet once).
 
 ## What it does
 
 | Situation | What happens |
 |---|---|
-| First launch | Sign in, or create an account. Astronauts fill in a profile: pre-flight baseline, medical notes, and where they are (which sets the Earth delay, background radiation and gravity) |
-| Every day | Six short assessments (vitals, mind and sleep, vision, body and pain, exercise, food and water). When all are done, the day's report goes to the flight surgeon. All-green reports are acknowledged automatically; the rest wait for the doctor's feedback, and the report shows Sent, Delivered, then Reviewed |
+| First launch | Sign in, or create an account. Astronauts fill in a profile: pre-flight baseline, medical notes |
+| Every day | Six short assessments (vitals, mind and sleep, vision, body and pain, exercise, food and water). When all are done, the day's report goes to the medical officer (medical professional on Earth). All-green reports are acknowledged automatically; the rest wait for the doctor's feedback, and the report shows Sent, Delivered, then Reviewed |
 | A reading goes out of range | The home screen alerts immediately, shows a checklist, and tells Earth |
-| "I need help" | Alerts the crew medical officer and Earth at once, asks what happened and injury-specific questions plus fixed danger signs, shows steps, and sends the assessment |
+| "I need help" | Built-in emergency mitigation system. Alerts the crew medical officer and Earth at once, asks what happened and injury-specific questions plus fixed danger signs, shows steps, and sends the assessment |
 
-The home screen shows a body figure whose organs are coloured by status,
-small vitals tiles, and a Mission card with radiation (today and the mission
+The home screen shows a 3D body figure whose organs are coloured by status of vitals,
+small vitals tiles (colored and updated in real time), and a Mission card with radiation (today and the mission
 total against NASA's career limit), exercise rings and mood. Mood and
 exercise are never shown in amber or red; the flight surgeon still sees
 their real status.
@@ -73,5 +67,19 @@ simulated corps of 100 astronauts (`data/crew_dataset.json`).
 | `tools/build_body.py` | Rebuilds the 3D body's point cloud (needs numpy) |
 | `private/` | Accounts, profiles, smartwatch data and the Azure link; ignored by Git |
 
-More detail: [docs/getting-started.md](docs/getting-started.md),
-[docs/contract.md](docs/contract.md), [docs/demo.md](docs/demo.md).
+More detail: [docs/contract.md](docs/contract.md), [docs/demo.md](docs/demo.md).
+
+
+Installs to make changes to the code:
+
+- **Local AI:** install [Ollama](https://ollama.com) and pull one small model.
+  The app uses whichever model is installed and falls back to written
+  explanations when none is running.
+- **Apple Watch baseline:** put a Health export in `private/` and run
+  `python3 backend/simulator/watch_import.py private/export.zip`.
+- **Speaking instead of typing:** offline speech-to-text with Whisper on the
+  emergency and Ask screens. Setup is in [docs/speech.md](docs/speech.md).
+- **Azure archive:** the Earth side can keep every report in Microsoft Azure
+  Blob Storage. Setup is in [docs/azure.md](docs/azure.md).
+- **Real NASA event:** `python3 backend/nasa_data/donki.py` refreshes the saved
+  solar particle event (needs internet once).
